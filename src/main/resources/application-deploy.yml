@@ -1,0 +1,14 @@
+spring:
+  application:
+    name: MenuDisplay
+  datasource:
+    url: jdbc:mysql://localhost:3306/outletManagement
+    username: root
+    password: Divyapass@23
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      dialect: org.hibernate.dialect.MySQLDialect
+    show-sql: true
+
