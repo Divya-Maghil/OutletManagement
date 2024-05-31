@@ -1,11 +1,10 @@
 package com.example.Outlet_Management.entity;
 
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
 
 @Entity
 @Table(name="mh_location")
@@ -41,8 +40,7 @@ public class MhLocation {
     private String pinCode;
     @Column(length=20)
     private String country;
-    @Column(columnDefinition = "text")
-    @Lob
+    @Column(columnDefinition = "JSON")
     private String attributes;
 
 

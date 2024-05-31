@@ -12,7 +12,7 @@ import com.amazonaws.services.s3.model.AmazonS3Exception;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.amazonaws.services.s3.model.PutObjectRequest;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
-import org.apache.tika.Tika;
+
 
 import java.io.*;
 
@@ -52,6 +52,5 @@ public class Aws {
             throw new AWSImageUploadFailedException("File upload failed to Aws Bucket" , e);
         }
 
-       // s3Client.putObject(bucketName, fileName, byteArrayInputStream, metadata);
     }
 }

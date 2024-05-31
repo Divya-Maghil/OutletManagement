@@ -1,6 +1,6 @@
 package com.example.Outlet_Management.error;
 
-import com.amazonaws.services.s3.model.AmazonS3Exception;
+
 
 public class AWSImageUploadFailedException extends Exception{
     public AWSImageUploadFailedException() {

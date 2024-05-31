@@ -6,7 +6,6 @@ import com.example.Outlet_Management.repo.MediaRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 
 @Repository
 public class MediaDaoImpl implements MediaDao {

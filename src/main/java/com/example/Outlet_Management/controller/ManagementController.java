@@ -1,9 +1,6 @@
 package com.example.Outlet_Management.controller;
 
-import com.example.Outlet_Management.Dto.GetDto;
-import com.example.Outlet_Management.Dto.OnboardingDto;
-import com.example.Outlet_Management.Dto.RegistrationDTO;
-import com.example.Outlet_Management.entity.MhLocation;
+import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
@@ -28,7 +25,7 @@ public class ManagementController {
     }
 
     @PostMapping("/registration")
-    public ResponseEntity<String> Registration(@RequestBody RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException {
+    public ResponseEntity<String> Registration(@RequestBody RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
        return managementService.saveRegistration(registrationDTO);
    }
 
@@ -37,6 +34,26 @@ public class ManagementController {
         return managementService.onboarding(onboardingDto);
    }
 
+   @PostMapping("/basicDetails")
+    public ResponseEntity<String> postBasicDetails(@RequestBody BasicDetailsDto basicDetailsDto) throws Exception {
+        return managementService.saveBasic(basicDetailsDto);
+   }
 
+   @PostMapping("/restImg")
+    public ResponseEntity<String> saveImg(@RequestBody RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException {
+        return managementService.saveRestaurantImg(restaurantImgDTO);
+   }
+   @PostMapping("/dineIn")
+    public ResponseEntity<String> saveDineIn(@RequestBody DineInDto dineInDto) throws Exception {
+        return managementService.saveDineIn(dineInDto);
+   }
+   @PostMapping("/pickUp")
+    public ResponseEntity<String> savePickup(@RequestBody PickupDto pickupDto) throws Exception {
+        return managementService.savePickup(pickupDto);
+   }
 
+   @PostMapping("/kitchen")
+    public ResponseEntity<String> saveKitchen(@RequestBody KitchenDto kitchenDto) throws Exception {
+        return managementService.saveKitchen(kitchenDto);
+   }
 }
