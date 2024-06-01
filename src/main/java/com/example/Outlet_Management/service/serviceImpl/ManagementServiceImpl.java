@@ -36,11 +36,13 @@ public class ManagementServiceImpl implements ManagementService {
     private MediaDao mediaDao;
     @Autowired
     private AvailabilityDao availabilityDao;
+    @Autowired
     private AWSCredentials awsCredentials;
-    Map<String,Object> attributesMap = new HashMap<>();
+
 
     @Override
     public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
+
         String id=UUID.randomUUID().toString();
         MhLocation newLocation=new MhLocation();
         newLocation.setMerchantId("8dfe7674-709d-431c-a233-628e839ecc76");
@@ -59,7 +61,6 @@ public class ManagementServiceImpl implements ManagementService {
         json.put("gstNumber", registrationDTO.getGstNumber());
 
         String updatedJson = objectMapper.writeValueAsString(json);
-        System.out.println(updatedJson);
         newLocation.setAttributes(updatedJson);
 
 
@@ -85,7 +86,7 @@ public class ManagementServiceImpl implements ManagementService {
             throw new ImageNotFoundException("Image not present in request body");
         }
         locationDao.save(newLocation);
-        return ResponseEntity.status(HttpStatus.OK).body("Success");
+        return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
     }
 
     @Override
@@ -129,13 +130,12 @@ public class ManagementServiceImpl implements ManagementService {
     @Override
     public ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException {
         Optional<MhLocation> locationData = locationDao.findById(onboardingDto.getRestaurant_details().getId());
-        System.out.println(locationData);
+
         String imageId = null;
         if (!locationData.isPresent()) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Location not found");
         }
         MhLocation location = locationData.get();
-
         if (onboardingDto.getRestaurant_details().getBusinessLegalName() != null && !onboardingDto.getRestaurant_details().getBusinessLegalName().equals(location.getRestaurantName())) {
             location.setRestaurantName(onboardingDto.getRestaurant_details().getBusinessLegalName());
         }
@@ -157,7 +157,7 @@ public class ManagementServiceImpl implements ManagementService {
 
         if (onboardingDto.getFssai_details().getDocuments() != null && !onboardingDto.getFssai_details().getDocuments().isEmpty()) {
             byte[] imageBytes = Base64.getDecoder().decode(onboardingDto.getFssai_details().getDocuments());
-            String fileName = String.valueOf("cms_"+System.currentTimeMillis());
+            String fileName = String.valueOf("cms_" + System.currentTimeMillis());
             Tika tika = new Tika();
             String mimeType = tika.detect(imageBytes);
             try {
@@ -176,31 +176,34 @@ public class ManagementServiceImpl implements ManagementService {
                 throw new AWSImageUploadFailedException("Failed to upload image to AWS S3", e);
             }
         }
-        System.out.println(onboardingDto.getFssai_details());
-        if(onboardingDto.getFssai_details().getIsEnabled().equalsIgnoreCase("yes")) {
+
+        ObjectNode attributesNode = objectMapper.createObjectNode();
+
+        if (onboardingDto.getFssai_details().getIsEnabled().equalsIgnoreCase("yes")) {
             fssaiDetailsJson.setDocuments(imageId);
-            String attributesJson = objectMapper.writeValueAsString(onboardingDto.getFssai_details());
-            attributesMap.put("FSSAIDetails",attributesJson);
+            JsonNode fssaiNode = objectMapper.valueToTree(fssaiDetailsJson);
+            attributesNode.set("FSSAIDetails", fssaiNode);
         }
-        if(onboardingDto.getBank_details()!=null) {
-            String attributesJson = objectMapper.writeValueAsString(onboardingDto.getBank_details());
-            attributesMap.put("checkInDetails",attributesJson);
+        if (onboardingDto.getBank_details() != null) {
+            JsonNode bankNode = objectMapper.valueToTree(bank);
+            attributesNode.set("BankDetails", bankNode);
         }
 
-        attributesMap.put("RestaurantNumber",onboardingDto.getRestaurant_details().getRestaurantNumber());
-        attributesMap.put("websiteLink",onboardingDto.getRestaurant_details().getWebsite());
-        attributesMap.put("instagramLink",onboardingDto.getRestaurant_details().getInstagramLink());
-        attributesMap.put("FaceBookLink",onboardingDto.getRestaurant_details().getFacebookLink());
-        attributesMap.put("WhatsappNumber",onboardingDto.getRestaurant_details().getWhatsappNumber());
+        attributesNode.put("RestaurantNumber", onboardingDto.getRestaurant_details().getRestaurantNumber());
+        attributesNode.put("websiteLink", onboardingDto.getRestaurant_details().getWebsite());
+        attributesNode.put("instagramLink", onboardingDto.getRestaurant_details().getInstagramLink());
+        attributesNode.put("FaceBookLink", onboardingDto.getRestaurant_details().getFacebookLink());
+        attributesNode.put("WhatsappNumber", onboardingDto.getRestaurant_details().getWhatsappNumber());
 
-        String existingAttributes = locationData.get().getAttributes();
+        String existingAttributes = location.getAttributes();
         JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-        JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(objectMapper.writeValueAsString(attributesMap));
-        location.setAttributes(objectMapper.writeValueAsString(attributesMap));
+        JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
+        location.setAttributes(objectMapper.writeValueAsString(mergeData));
         locationDao.save(location);
 
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
+
 
     @Override
     public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws Exception {
@@ -311,6 +314,7 @@ public class ManagementServiceImpl implements ManagementService {
     @Override
     public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws Exception {
         ObjectMapper objectMapper = new ObjectMapper();
+        ObjectNode attributesNode = objectMapper.createObjectNode();
         Optional<MhLocation> existingLocation=locationDao.findById(dineInDto.getLocationId());
         if(existingLocation.isPresent()) {
             MhLocation location=existingLocation.get();
@@ -320,12 +324,12 @@ public class ManagementServiceImpl implements ManagementService {
             attributesMap.put("interactiveDineIn", dineInDto.getInteractiveDineIn());
             attributesMap.put("merchant4DigitalValidation", dineInDto.getMerchant4DigitValidation());
             if(dineInDto.getCheckIn()!=null) {
-                String attributesJson = objectMapper.writeValueAsString(dineInDto.getCheckIn());
-                attributesMap.put("checkInDetails",attributesJson);
+                JsonNode checkInNode = objectMapper.valueToTree(dineInDto.getCheckIn());
+                attributesNode.set("CheckInDetails",checkInNode);
             }
             if(dineInDto.getReservation() != null) {
-                String attributesJson = objectMapper.writeValueAsString(dineInDto.getReservation());
-                attributesMap.put("reservationDetails",attributesJson);
+                JsonNode reservationNode = objectMapper.valueToTree(dineInDto.getReservation());
+                attributesNode.set("ReservationDetails",reservationNode);
             }
             String existingAttributes = existingLocation.get().getAttributes();
             JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
@@ -345,14 +349,21 @@ public class ManagementServiceImpl implements ManagementService {
         if(existingLocation.isPresent()) {
 
             MhLocation location=existingLocation.get();
-            String attributesJson = objectMapper.writeValueAsString(pickupDto);
-            System.out.println(attributesJson);
-            Map<String, String> attributesMap = new HashMap<>();
-            attributesMap.put("pickUpDetails",attributesJson);
-            String existingAttributes = existingLocation.isPresent() ? existingLocation.get().getAttributes() : null;
+            ObjectNode pickupDtoJsonNode = objectMapper.valueToTree(pickupDto);
+            // Remove the locationId field
+            pickupDtoJsonNode.remove("locationId");
+            ObjectNode attributesMapNode = objectMapper.createObjectNode();
+            attributesMapNode.set("PickUpDetails", pickupDtoJsonNode);
+
+            // Get existing attributes
+            String existingAttributes = location.getAttributes();
             JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-            JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(objectMapper.writeValueAsString(attributesMap));
-            location.setAttributes(objectMapper.writeValueAsString(mergeData));
+
+            // Merge new attributes with the existing attributes
+            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
+
+            // Save merged attributes back to the location
+            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
 
             locationDao.save(location);
 
@@ -368,18 +379,24 @@ public class ManagementServiceImpl implements ManagementService {
     public ResponseEntity<String> saveKitchen(KitchenDto kitchenDto) throws Exception {
         Optional<MhLocation> existingLocation = locationDao.findById(kitchenDto.getLocationId());
         ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.configure(JsonGenerator.Feature.ESCAPE_NON_ASCII, false);
         if (existingLocation.isPresent()) {
             MhLocation location=existingLocation.get();
-            String attributesJson = objectMapper.writeValueAsString(kitchenDto);
-            Map<String, String> attributesMap = new HashMap<>();
-            attributesMap.put("KitchenDetails",attributesJson);
-            String existingAttributes = existingLocation.isPresent() ? existingLocation.get().getAttributes() : null;
+            ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(kitchenDto);
+            // Remove the locationId field
+            kitchenDtoJsonNode.remove("locationId");
+
+            ObjectNode attributesMapNode = objectMapper.createObjectNode();
+            attributesMapNode.set("KitchenDetails", kitchenDtoJsonNode);
+
+            // Get existing attributes
+            String existingAttributes = location.getAttributes();
             JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-            JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(objectMapper.writeValueAsString(attributesMap));
 
-            location.setAttributes(objectMapper.writeValueAsString(mergeData));
+            // Merge new attributes with the existing attributes
+            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
 
+            // Save merged attributes back to the location
+            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
             locationDao.save(location);
         }
         else {
