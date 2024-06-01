@@ -225,27 +225,9 @@ public class ManagementServiceImpl implements ManagementService {
                     count--;
                 }
                 Optional<MhLocation> existingLocation=locationDao.findById(basicDetailsDto.getLocation_id());
-//                if(existingLocation.isPresent()) {
-//                    MhLocation location=existingLocation.get();
-//                    Map<String, String> attributesMap = new HashMap<>();
-//                    if(basicDetailsDto.getCuisines()!= null)
-//                        attributesMap.put("cuisines", String.valueOf(basicDetailsDto.getCuisines()));
-//                    if(basicDetailsDto.getAmenities()!=null)
-//                        attributesMap.put("amenities", String.valueOf(basicDetailsDto.getAmenities()));
-//                    if(basicDetailsDto.getParking()!=null)
-//                        attributesMap.put("parking", String.valueOf(basicDetailsDto.getParking()));
-//                    attributesMap.put("safetyMeasures", String.valueOf(basicDetailsDto.getSafetyMeasures()));
-//                    String attributesJson = objectMapper.writeValueAsString(attributesMap);
-//                    String existingAttributes = existingLocation.get().getAttributes();
-//                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-//
-//                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesJson);
-//                    location.setAttributes(objectMapper.writeValueAsString(mergeData));
-//                    locationDao.save(location);
-//                }
+
                 if (existingLocation.isPresent()) {
                     MhLocation location = existingLocation.get();
-                  //  ObjectMapper objectMapper = new ObjectMapper();
                     ObjectNode attributesNode = objectMapper.createObjectNode();
 
                     if (basicDetailsDto.getCuisines() != null) {
@@ -271,9 +253,7 @@ public class ManagementServiceImpl implements ManagementService {
 
                     location.setAttributes(objectMapper.writeValueAsString(mergeData));
                     locationDao.save(location);
-                }
-
-                    else {
+                }else {
                     throw new Exception("Entity not found");
                 }
 
