@@ -10,6 +10,7 @@ import com.example.Outlet_Management.entity.MhMedia;
 import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
+import com.example.Outlet_Management.error.LocationNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
 import com.example.Outlet_Management.util.Aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -51,7 +52,6 @@ public class ManagementServiceImpl implements ManagementService {
         newLocation.setName(registrationDTO.getName());
         newLocation.setPhone(registrationDTO.getPhone());
         newLocation.setEmail(registrationDTO.getEmail());
-
         if (newLocation.getAttributes() == null) {
             newLocation.setAttributes("{}");
         }
@@ -96,7 +96,6 @@ public class ManagementServiceImpl implements ManagementService {
         for(MhLocation locations:location) {
             GetDto returndto=new GetDto();
 
-            MhMedia media = mediaDao.findByEntityId(locations.getId());
             returndto.setId(locations.getId());
             returndto.setName(locations.getName());
             returndto.setEmail(locations.getEmail());
@@ -111,15 +110,34 @@ public class ManagementServiceImpl implements ManagementService {
             returndto.setCountry(locations.getCountry());
             returndto.setState(locations.getState());
             returndto.setPinCode(locations.getPinCode());
-            if (media != null) {
-                MediaDto mediaDto = new MediaDto();
-                mediaDto.setEntityId(media.getEntityId());
-                mediaDto.setEntityType(media.getEntityType());
-                mediaDto.setFileName(media.getFileName());
-                mediaDto.setMimeType(media.getMimeType());
-                mediaDto.setSortOrder(media.getSortOrder());
-                mediaDto.setTag(media.getTag());
-                returndto.setMedia(mediaDto);
+            List<MhMedia> mediaList = mediaDao.findByEntityId(locations.getId());
+
+            if (mediaList != null && !mediaList.isEmpty()) {
+                List<MediaDto> mediaDtoList = new ArrayList<>();
+                for (MhMedia media : mediaList) {
+                    MediaDto mediaDto = new MediaDto();
+                    mediaDto.setEntityId(media.getEntityId());
+                    mediaDto.setEntityType(media.getEntityType());
+                    mediaDto.setFileName(media.getFileName());
+                    mediaDto.setMimeType(media.getMimeType());
+                    mediaDto.setSortOrder(media.getSortOrder());
+                    mediaDto.setTag(media.getTag());
+                    mediaDtoList.add(mediaDto);
+                }
+                returndto.setMedia(mediaDtoList);
+            }
+            List<mhAvailability> availabilityList=availabilityDao.findAllByEntityId(locations.getId());
+            if(availabilityList != null){
+                List<AvailabilityDto> availabilityDtoList = new ArrayList<>();
+                for(mhAvailability availability : availabilityList){
+                    AvailabilityDto availabilityDto = new AvailabilityDto();
+                    availabilityDto.setName(availability.getName());
+                    availabilityDto.setCreatedTime(availability.getCreatedTime());
+                    availabilityDto.setEndTime(availability.getEndTime());
+                    availabilityDto.setWeekDay(availability.getWeekday());
+                    availabilityDtoList.add(availabilityDto);
+                }
+                returndto.setAvailabilityDtos(availabilityDtoList);
             }
             resultList.add(returndto);
         }
@@ -127,13 +145,17 @@ public class ManagementServiceImpl implements ManagementService {
     }
 
 
+
+
+
     @Override
-    public ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException {
+    public ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException,LocationNotFoundException {
         Optional<MhLocation> locationData = locationDao.findById(onboardingDto.getRestaurant_details().getId());
 
         String imageId = null;
         if (!locationData.isPresent()) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Location not found");
+           // return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Location not found");
+            throw new LocationNotFoundException("location not present");
         }
         MhLocation location = locationData.get();
         if (onboardingDto.getRestaurant_details().getBusinessLegalName() != null && !onboardingDto.getRestaurant_details().getBusinessLegalName().equals(location.getRestaurantName())) {
@@ -217,9 +239,9 @@ public class ManagementServiceImpl implements ManagementService {
                     mhAvailability availability = new mhAvailability();
                     availability.setName(sessionDto.getName());
                     availability.setId(UUID.randomUUID().toString());
-                    availability.setStart_time(sessionDto.getStart_time());
-                    availability.setEnd_time(sessionDto.getEnd_time());
-                    availability.setLocation_id(basicDetailsDto.getLocation_id());
+                    availability.setStartTime(sessionDto.getStart_time());
+                    availability.setEndTime(sessionDto.getEnd_time());
+                    availability.setLocationId(basicDetailsDto.getLocation_id());
                     availability.setWeekday(numberingDays(sessionDto.getWeekday().get(len-count)));
                     availabilityDao.save(availability);
                     count--;

@@ -1,6 +1,7 @@
 package com.example.Outlet_Management.Dto;
 
 import lombok.Data;
+import java.util.*;
 
 @Data
 public class GetDto {
@@ -18,5 +19,6 @@ public class GetDto {
     private String pinCode;
     private String country;
     private String attributes;
-    private MediaDto media;
+    private List<MediaDto> media;
+    private List<AvailabilityDto> availabilityDtos;
 }

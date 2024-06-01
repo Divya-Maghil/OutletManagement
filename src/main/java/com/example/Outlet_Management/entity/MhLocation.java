@@ -4,12 +4,13 @@ package com.example.Outlet_Management.entity;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
 
 @Entity
 @Table(name="mh_location")
 @Data
-@AllArgsConstructor
+@AllArgsConstructor(staticName = "build")
 @RequiredArgsConstructor
 public class MhLocation {
 

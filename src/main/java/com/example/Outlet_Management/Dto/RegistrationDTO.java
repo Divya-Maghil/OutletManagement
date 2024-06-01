@@ -1,9 +1,11 @@
 package com.example.Outlet_Management.Dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.hibernate.sql.ast.SqlTreeCreationException;
 
 @Data
+@AllArgsConstructor(staticName = "build")
 public class RegistrationDTO {
 
     private String restaurantName; //Business_legal_name

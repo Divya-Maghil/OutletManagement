@@ -6,6 +6,8 @@ import com.example.Outlet_Management.repo.AvailabilityRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public class AvailabilityDaoImpl implements AvailabilityDao {
     @Autowired
@@ -13,5 +15,10 @@ public class AvailabilityDaoImpl implements AvailabilityDao {
     @Override
     public void save(mhAvailability availability) {
         availabilityRepo.save(availability);
+    }
+
+    @Override
+    public List<mhAvailability> findAllByEntityId(String id) {
+        return availabilityRepo.findAllByLocationId(id);
     }
 }

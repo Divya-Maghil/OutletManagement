@@ -4,7 +4,10 @@ import com.example.Outlet_Management.entity.MhMedia;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface MediaRepository extends JpaRepository<MhMedia,String> {
-    MhMedia findByEntityId(String id);
+    List<MhMedia> findAllByEntityId(String id);
+
 }

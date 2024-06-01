@@ -15,13 +15,13 @@ import lombok.RequiredArgsConstructor;
 public class mhAvailability {
     @Id
     private String id;
-    private String location_id;
+    private String locationId;
     private String name;
-    private String start_time;
-    private String end_time;
+    private String startTime;
+    private String endTime;
     private String weekday;
-    private Integer is_default;
-    private Integer is_enabled;
-    private String created_time;
-    private String modified_time;
+    private Integer isDefault;
+    private Integer isEnabled;
+    private String createdTime;
+    private String modifiedTime;
 }
