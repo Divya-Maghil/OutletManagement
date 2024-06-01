@@ -12,7 +12,6 @@ import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
 import com.example.Outlet_Management.util.Aws;
-import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +23,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import java.util.*;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 
 @Service
 @Slf4j
@@ -225,24 +225,55 @@ public class ManagementServiceImpl implements ManagementService {
                     count--;
                 }
                 Optional<MhLocation> existingLocation=locationDao.findById(basicDetailsDto.getLocation_id());
-                if(existingLocation.isPresent()) {
-                    MhLocation location=existingLocation.get();
-                    Map<String, String> attributesMap = new HashMap<>();
-                    if(basicDetailsDto.getCuisines()!= null)
-                        attributesMap.put("cuisines", String.valueOf(basicDetailsDto.getCuisines()));
-                    if(basicDetailsDto.getAmenities()!=null)
-                        attributesMap.put("amenities", String.valueOf(basicDetailsDto.getAmenities()));
-                    if(basicDetailsDto.getParking()!=null)
-                        attributesMap.put("parking", String.valueOf(basicDetailsDto.getParking()));
-                    attributesMap.put("safetyMeasures", String.valueOf(basicDetailsDto.getSafetyMeasures()));
-                    String attributesJson = objectMapper.writeValueAsString(attributesMap);
-                    String existingAttributes = existingLocation.get().getAttributes();
-                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+//                if(existingLocation.isPresent()) {
+//                    MhLocation location=existingLocation.get();
+//                    Map<String, String> attributesMap = new HashMap<>();
+//                    if(basicDetailsDto.getCuisines()!= null)
+//                        attributesMap.put("cuisines", String.valueOf(basicDetailsDto.getCuisines()));
+//                    if(basicDetailsDto.getAmenities()!=null)
+//                        attributesMap.put("amenities", String.valueOf(basicDetailsDto.getAmenities()));
+//                    if(basicDetailsDto.getParking()!=null)
+//                        attributesMap.put("parking", String.valueOf(basicDetailsDto.getParking()));
+//                    attributesMap.put("safetyMeasures", String.valueOf(basicDetailsDto.getSafetyMeasures()));
+//                    String attributesJson = objectMapper.writeValueAsString(attributesMap);
+//                    String existingAttributes = existingLocation.get().getAttributes();
+//                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+//
+//                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesJson);
+//                    location.setAttributes(objectMapper.writeValueAsString(mergeData));
+//                    locationDao.save(location);
+//                }
+                if (existingLocation.isPresent()) {
+                    MhLocation location = existingLocation.get();
+                  //  ObjectMapper objectMapper = new ObjectMapper();
+                    ObjectNode attributesNode = objectMapper.createObjectNode();
 
-                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesJson);
+                    if (basicDetailsDto.getCuisines() != null) {
+                        ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
+                        attributesNode.set("cuisines", cuisinesArray);
+                    }
+                    if (basicDetailsDto.getAmenities() != null) {
+                        ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
+                        attributesNode.set("amenities", amenitiesArray);
+                    }
+                    if (basicDetailsDto.getParking() != null) {
+                        ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
+                        attributesNode.set("parking", parkingArray);
+                    }
+                    if (basicDetailsDto.getSafetyMeasures() != null) {
+                        ArrayNode safetyMeasuresArray = objectMapper.valueToTree(basicDetailsDto.getSafetyMeasures());
+                        attributesNode.set("safetyMeasures", safetyMeasuresArray);
+                    }
+
+                    String existingAttributes = location.getAttributes();
+                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
+
                     location.setAttributes(objectMapper.writeValueAsString(mergeData));
                     locationDao.save(location);
-                }else {
+                }
+
+                    else {
                     throw new Exception("Entity not found");
                 }
 
