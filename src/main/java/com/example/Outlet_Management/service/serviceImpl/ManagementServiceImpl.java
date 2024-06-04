@@ -94,7 +94,6 @@ public class ManagementServiceImpl implements ManagementService {
         Optional<List<MhLocation>> optionalLocation = locationDao.findByMerchantId(id);
         System.out.println(optionalLocation);
         if (optionalLocation.get().isEmpty()) {
-            System.out.println("here....");
             throw new LocationNotFoundException("Invalid Merchant");
         }
         List<MhLocation> location = optionalLocation.get();
@@ -231,7 +230,7 @@ public class ManagementServiceImpl implements ManagementService {
 
 
     @Override
-    public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws Exception {
+    public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
         if (sessionDtos.size() != 0) {
@@ -279,7 +278,7 @@ public class ManagementServiceImpl implements ManagementService {
                     location.setAttributes(objectMapper.writeValueAsString(mergeData));
                     locationDao.save(location);
                 } else {
-                    throw new Exception("Entity not found");
+                    throw new LocationNotFoundException();
                 }
 
             }
@@ -348,7 +347,7 @@ public class ManagementServiceImpl implements ManagementService {
     }
 
     @Override
-    public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws Exception {
+    public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws LocationNotFoundException, JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode attributesNode = objectMapper.createObjectNode();
         Optional<MhLocation> existingLocation = locationDao.findById(dineInDto.getLocationId());
@@ -373,7 +372,7 @@ public class ManagementServiceImpl implements ManagementService {
             location.setAttributes(objectMapper.writeValueAsString(mergeData));
             locationDao.save(location);
         } else {
-            throw new Exception("Entity not found");
+            throw new LocationNotFoundException();
         }
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
@@ -404,7 +403,7 @@ public class ManagementServiceImpl implements ManagementService {
             locationDao.save(location);
 
         } else {
-            throw new Exception("Entity not found");
+            throw new LocationNotFoundException();
         }
         return ResponseEntity.status(HttpStatus.OK).body("Success");
 
@@ -435,7 +434,7 @@ public class ManagementServiceImpl implements ManagementService {
             location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
             locationDao.save(location);
         } else {
-            throw new Exception("Entity not found");
+            throw new LocationNotFoundException();
         }
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
@@ -507,7 +506,7 @@ public class ManagementServiceImpl implements ManagementService {
                     return ResponseEntity.status(HttpStatus.OK).body("Success");
                 }
             }
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Entity not found");
+        throw new LocationNotFoundException();
             }
 
     }

@@ -22,7 +22,13 @@ public class RestResponseEntityException extends ResponseEntityExceptionHandler{
 
     @ExceptionHandler(ImageNotFoundException.class)
     public ResponseEntity<ErrorMessage> imageNotPresentException(ImageNotFoundException exception , WebRequest request){
-        ErrorMessage errorMessage = new ErrorMessage();
+        ErrorMessage errorMessage = new ErrorMessage(HttpStatus.NOT_FOUND,exception.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMessage);
+    }
+
+    @ExceptionHandler(LocationNotFoundException.class)
+    public ResponseEntity<ErrorMessage> locationNotFoundException(LocationNotFoundException exception,WebRequest request){
+        ErrorMessage errorMessage=new ErrorMessage(HttpStatus.NOT_FOUND, exception.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorMessage);
     }
 }
