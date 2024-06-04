@@ -92,7 +92,6 @@ public class ManagementServiceImpl implements ManagementService {
     @Override
     public List<GetDto> getData(String id) throws LocationNotFoundException {
         Optional<List<MhLocation>> optionalLocation = locationDao.findByMerchantId(id);
-        System.out.println(optionalLocation);
         if (optionalLocation.get().isEmpty()) {
             throw new LocationNotFoundException("Invalid Merchant");
         }
@@ -156,7 +155,6 @@ public class ManagementServiceImpl implements ManagementService {
 
         String imageId = null;
         if (!locationData.isPresent()) {
-            // return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Location not found");
             throw new LocationNotFoundException("location not present");
         }
         MhLocation location = locationData.get();
@@ -233,7 +231,7 @@ public class ManagementServiceImpl implements ManagementService {
     public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
-        if (sessionDtos.size() != 0) {
+        if (!sessionDtos.isEmpty()) {
             for (RestaurantSessionDto sessionDto : sessionDtos) {
                 int count = sessionDto.getWeekday().size();
                 int len = sessionDto.getWeekday().size();
@@ -346,30 +344,29 @@ public class ManagementServiceImpl implements ManagementService {
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
 
+
+
     @Override
     public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws LocationNotFoundException, JsonProcessingException {
-        ObjectMapper objectMapper = new ObjectMapper();
-        ObjectNode attributesNode = objectMapper.createObjectNode();
         Optional<MhLocation> existingLocation = locationDao.findById(dineInDto.getLocationId());
+        ObjectMapper objectMapper = new ObjectMapper();
         if (existingLocation.isPresent()) {
             MhLocation location = existingLocation.get();
-            Map<String, String> attributesMap = new HashMap<>();
-            attributesMap.put("dineIn", dineInDto.getDineIn());
-            attributesMap.put("highChair", dineInDto.getHighChair());
-            attributesMap.put("interactiveDineIn", dineInDto.getInteractiveDineIn());
-            attributesMap.put("merchant4DigitalValidation", dineInDto.getMerchant4DigitValidation());
-            if (dineInDto.getCheckIn() != null) {
-                JsonNode checkInNode = objectMapper.valueToTree(dineInDto.getCheckIn());
-                attributesNode.set("CheckInDetails", checkInNode);
-            }
-            if (dineInDto.getReservation() != null) {
-                JsonNode reservationNode = objectMapper.valueToTree(dineInDto.getReservation());
-                attributesNode.set("ReservationDetails", reservationNode);
-            }
-            String existingAttributes = existingLocation.get().getAttributes();
+            ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(dineInDto);
+
+            kitchenDtoJsonNode.remove("locationId");
+
+            ObjectNode attributesMapNode = objectMapper.createObjectNode();
+            attributesMapNode.set("DineInDetails", kitchenDtoJsonNode);
+
+
+            String existingAttributes = location.getAttributes();
             JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-            JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(objectMapper.writeValueAsString(attributesMap));
-            location.setAttributes(objectMapper.writeValueAsString(mergeData));
+
+            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
+
+            // Save merged attributes back to the location
+            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
             locationDao.save(location);
         } else {
             throw new LocationNotFoundException();
@@ -417,17 +414,16 @@ public class ManagementServiceImpl implements ManagementService {
         if (existingLocation.isPresent()) {
             MhLocation location = existingLocation.get();
             ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(kitchenDto);
-            // Remove the locationId field
+
             kitchenDtoJsonNode.remove("locationId");
 
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
             attributesMapNode.set("KitchenDetails", kitchenDtoJsonNode);
 
-            // Get existing attributes
+
             String existingAttributes = location.getAttributes();
             JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
 
-            // Merge new attributes with the existing attributes
             ((ObjectNode) oldAttributes).setAll(attributesMapNode);
 
             // Save merged attributes back to the location
@@ -459,36 +455,27 @@ public class ManagementServiceImpl implements ManagementService {
 
                 // Process deliverySetting
                 if (deliveryDto.getDeliveryOption() != null) {
-                    DeliverySettingDto deliverySetting = deliveryDto.getDeliveryOption();
-
+                    DeliverySettingDto deliveryOption = deliveryDto.getDeliveryOption();
 
                     // Handle inHouse
-                    if (deliverySetting.getInHouse() != null) {
-                        Boolean isInHouseEnabled = deliverySetting.getInHouse().getIsEnabled();
-                        if (Boolean.TRUE.equals(isInHouseEnabled)) {
-                            deliveryDtoJsonNode.set("inHouse", objectMapper.valueToTree(deliverySetting.getInHouse()));
-                        } else {
-                            deliveryDtoJsonNode.put("isInHouseEnabled", false);
-                        }
-                    } else {
+                    if (deliveryOption.getInHouse() != null && Boolean.TRUE.equals(deliveryOption.getInHouse().getIsEnabled())) {
+                            deliveryDtoJsonNode.set("inHouse", objectMapper.valueToTree(deliveryOption.getInHouse()));
+                    }
+                    else {
                         deliveryDtoJsonNode.put("isInHouseEnabled", false);
                     }
-
                     // Handle thirdParty
-                    if (deliverySetting.getThirdParty() != null) {
-                        Boolean isThirdPartyEnabled = deliverySetting.getThirdParty().getIsEnabled();
-                        if (Boolean.TRUE.equals(isThirdPartyEnabled)) {
-                            deliveryDtoJsonNode.set("thirdParty", objectMapper.valueToTree(deliverySetting.getThirdParty()));
-                        } else {
-                            deliveryDtoJsonNode.put("isThirdPartyEnabled", false);
-                        }
-                    } else {
+                    if (deliveryOption.getThirdParty() != null && (Boolean.TRUE.equals(deliveryOption.getThirdParty().getIsEnabled()))) {
+                        //ObjectNode thirdPartyNode = objectMapper.valueToTree(deliverySetting.getThirdParty());
+                        deliveryDtoJsonNode.set("thirdParty", objectMapper.valueToTree(deliveryOption.getThirdParty()));
+                    }
+                    else {
                         deliveryDtoJsonNode.put("isThirdPartyEnabled", false);
                     }
 
                     deliveryDtoJsonNode.remove("deliveryOption");
 
-
+                }
                   ObjectNode attributesMapNode = objectMapper.createObjectNode();
                   attributesMapNode.set("DeliveryDetails", deliveryDtoJsonNode);
 
@@ -505,10 +492,14 @@ public class ManagementServiceImpl implements ManagementService {
 
                     return ResponseEntity.status(HttpStatus.OK).body("Success");
                 }
-            }
         throw new LocationNotFoundException();
-            }
-
     }
+
+}
+
+
+
+
+
 
 

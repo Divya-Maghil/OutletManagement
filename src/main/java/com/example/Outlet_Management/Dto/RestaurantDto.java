@@ -1,8 +1,10 @@
 package com.example.Outlet_Management.Dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class RestaurantDto {
 
     private String id;
