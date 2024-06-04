@@ -5,8 +5,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface LocationRepository extends JpaRepository<MhLocation,String> {
-    List<MhLocation> findByMerchantId(String id);
+    Optional<List<MhLocation>> findByMerchantId(String id);
 }

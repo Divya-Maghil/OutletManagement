@@ -3,6 +3,7 @@ package com.example.Outlet_Management.controller;
 import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
+import com.example.Outlet_Management.error.LocationNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,7 +21,7 @@ public class ManagementController {
 
 
     @GetMapping("/{id}")
-    public List<GetDto> getLocation(@PathVariable String id){
+    public List<GetDto> getLocation(@PathVariable String id) throws LocationNotFoundException {
         return managementService.getData(id);
     }
 
@@ -30,7 +31,7 @@ public class ManagementController {
    }
 
    @PostMapping("/onBoarding")
-    public ResponseEntity<String> Onboarding(@RequestBody OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException {
+    public ResponseEntity<String> Onboarding(@RequestBody OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException {
         return managementService.onboarding(onboardingDto);
    }
 
@@ -55,5 +56,10 @@ public class ManagementController {
    @PostMapping("/kitchen")
     public ResponseEntity<String> saveKitchen(@RequestBody KitchenDto kitchenDto) throws Exception {
         return managementService.saveKitchen(kitchenDto);
+   }
+
+   @PostMapping("/delivery")
+    public ResponseEntity<String> saveDelivery(@RequestBody DeliveryDto deliveryDto) throws Exception {
+        return managementService.saveDelivery(deliveryDto);
    }
 }

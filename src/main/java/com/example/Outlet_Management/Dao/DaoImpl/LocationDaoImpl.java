@@ -16,7 +16,7 @@ public class LocationDaoImpl implements LocationDao {
     private LocationRepository locationRepo;
 
     @Override
-    public List<MhLocation> findByMerchantId(String id) {
+    public Optional<List<MhLocation>> findByMerchantId(String id) {
         return locationRepo.findByMerchantId(id);
     }
 

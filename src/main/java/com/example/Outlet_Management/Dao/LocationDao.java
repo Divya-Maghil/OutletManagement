@@ -5,7 +5,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface LocationDao {
-    List<MhLocation> findByMerchantId(String id);
+    Optional<List<MhLocation>> findByMerchantId(String id);
 
     void save(MhLocation newLocation);
 
