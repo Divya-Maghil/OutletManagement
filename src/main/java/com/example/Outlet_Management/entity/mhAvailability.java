@@ -14,8 +14,7 @@ import lombok.RequiredArgsConstructor;
 public class mhAvailability {
     @Id
     private String id;
-    @NotBlank(message = "please add the locationId")
-    @Column(insertable = false, updatable = false)
+
     private String locationId;
     private String name;
     private String startTime;
@@ -26,7 +25,4 @@ public class mhAvailability {
     private String createdTime;
     private String modifiedTime;
 
-    @ManyToOne
-    @JoinColumn(name = "locationId") // Assuming entityId is the foreign key column name
-    private MhLocation location;
 }

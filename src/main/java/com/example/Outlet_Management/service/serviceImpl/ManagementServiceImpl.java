@@ -56,7 +56,13 @@ public class ManagementServiceImpl implements ManagementService {
     private EntityManager entityManager;
 
     @Autowired
+    private RegistrationMapper registrationMapper;
+
+    @Autowired
     private OnboardingMapper onboardingMapper;
+
+    @Autowired
+    private LocationMapper locationMapper;
 
 
 
@@ -64,7 +70,7 @@ public class ManagementServiceImpl implements ManagementService {
 
     @Override
     public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
-        MhLocation newLocation = RegistrationMapper.INSTANCE.toMhLocation(registrationDTO);
+        MhLocation newLocation = registrationMapper.toMhLocation(registrationDTO);
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode json = objectMapper.createObjectNode();
         json.put("gstNumber", registrationDTO.getGstNumber());
@@ -79,7 +85,7 @@ public class ManagementServiceImpl implements ManagementService {
 
 
 
-
+    @Override
     public List<GetDto> getData(String merchantId) throws LocationNotFoundException {
         // Retrieve MhLocation entities
         List<MhLocation> locations = entityManager.createQuery(
@@ -90,7 +96,7 @@ public class ManagementServiceImpl implements ManagementService {
         if (locations.isEmpty()) {
             throw new LocationNotFoundException("Invalid Merchant");
         }
-
+        List<String> locationIds = locations.stream().map(MhLocation::getId).toList();
         // Retrieve MhMedia entities for all locations
         List<MhMedia> mediaList = entityManager.createQuery(
                         "SELECT m FROM MhMedia m WHERE m.entityId IN :locationIds", MhMedia.class)
@@ -105,7 +111,7 @@ public class ManagementServiceImpl implements ManagementService {
 
         // Map entities to DTOs using MapStruct
         return locations.stream()
-                .map(location -> LocationMapper.INSTANCE.toDto(location, mediaList, availabilityList))
+                .map(location -> locationMapper.toDto(location, mediaList, availabilityList))
                 .collect(Collectors.toList());
     }
 
@@ -157,62 +163,66 @@ public class ManagementServiceImpl implements ManagementService {
 
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
-
-
     @Override
     public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
-        if (!sessionDtos.isEmpty()) {
-            for (RestaurantSessionDto sessionDto : sessionDtos) {
-                int count = sessionDto.getWeekday().size();
-                int len = sessionDto.getWeekday().size();
-                while (count > 0) {
-                    mhAvailability availability = new mhAvailability();
-                    availability.setName(sessionDto.getName());
-                    availability.setId(UUID.randomUUID().toString());
-                    availability.setStartTime(sessionDto.getStart_time());
-                    availability.setEndTime(sessionDto.getEnd_time());
-                    availability.setLocationId(basicDetailsDto.getLocation_id());
-                    availability.setWeekday(numberingDays(sessionDto.getWeekday().get(len - count)));
-                    availabilityDao.save(availability);
-                    count--;
-                }
-                Optional<MhLocation> existingLocation = locationDao.findById(basicDetailsDto.getLocation_id());
+        Optional<MhLocation> existingLocation = locationDao.findById(basicDetailsDto.getLocationId());
 
-                if (existingLocation.isPresent()) {
-                    MhLocation location = existingLocation.get();
-                    ObjectNode attributesNode = objectMapper.createObjectNode();
+        if (existingLocation.isPresent()) {
+            MhLocation location = existingLocation.get();
 
-                    if (basicDetailsDto.getCuisines() != null) {
-                        ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
-                        attributesNode.set("cuisines", cuisinesArray);
-                    }
-                    if (basicDetailsDto.getAmenities() != null) {
-                        ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
-                        attributesNode.set("amenities", amenitiesArray);
-                    }
-                    if (basicDetailsDto.getParking() != null) {
-                        ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
-                        attributesNode.set("parking", parkingArray);
-                    }
-                    if (basicDetailsDto.getSafetyMeasures() != null) {
-                        ArrayNode safetyMeasuresArray = objectMapper.valueToTree(basicDetailsDto.getSafetyMeasures());
-                        attributesNode.set("safetyMeasures", safetyMeasuresArray);
-                    }
+            if (!sessionDtos.isEmpty()) {
+                for (RestaurantSessionDto sessionDto : sessionDtos) {
+                    int count = sessionDto.getWeekday().size();
+                    int len = sessionDto.getWeekday().size();
 
-                    String existingAttributes = location.getAttributes();
-                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
+                    while (count > 0) {
+                        mhAvailability availability = new mhAvailability();
+                        availability.setName(sessionDto.getName());
+                        availability.setId(UUID.randomUUID().toString());
+                        availability.setLocationId(location.getId());
+                        availability.setStartTime(sessionDto.getStart_time());
+                        availability.setEndTime(sessionDto.getEnd_time());
+                        availability.setWeekday(numberingDays(sessionDto.getWeekday().get(len - count)));
 
-                    location.setAttributes(objectMapper.writeValueAsString(mergeData));
-                    locationDao.save(location);
-                } else {
-                    throw new LocationNotFoundException();
+                        availabilityDao.save(availability);
+                        count--;
+                    }
                 }
 
+                ObjectNode attributesNode = objectMapper.createObjectNode();
+
+                if (basicDetailsDto.getCuisines() != null) {
+                    ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
+                    attributesNode.set("cuisines", cuisinesArray);
+                }
+                if (basicDetailsDto.getAmenities() != null) {
+                    ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
+                    attributesNode.set("amenities", amenitiesArray);
+                }
+                if (basicDetailsDto.getParking() != null) {
+                    ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
+                    attributesNode.set("parking", parkingArray);
+                }
+                if (basicDetailsDto.getSafetyMeasures() != null) {
+                    ArrayNode safetyMeasuresArray = objectMapper.valueToTree(basicDetailsDto.getSafetyMeasures());
+                    attributesNode.set("safetyMeasures", safetyMeasuresArray);
+                }
+
+                String existingAttributes = location.getAttributes();
+                JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+                JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
+
+                location.setAttributes(objectMapper.writeValueAsString(mergeData));
+                locationDao.save(location);
+            } else {
+                throw new LocationNotFoundException();
             }
+        } else {
+            throw new LocationNotFoundException();
         }
+
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
 
@@ -225,8 +235,10 @@ public class ManagementServiceImpl implements ManagementService {
         dayMap.put("Friday", "5");
         dayMap.put("Saturday", "6");
         dayMap.put("Sunday", "7");
+        dayMap.put(null, "8");
         return dayMap.get(weekday);
     }
+
 
 
     @Override
@@ -281,7 +293,6 @@ public class ManagementServiceImpl implements ManagementService {
 
            mergeAttributes(location,attributesMapNode);
 
-
         } else {
             throw new LocationNotFoundException();
         }
@@ -297,6 +308,7 @@ public class ManagementServiceImpl implements ManagementService {
         if (existingLocation.isPresent()) {
             MhLocation location = existingLocation.get();
             ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(kitchenDto);
+
             kitchenDtoJsonNode.remove("locationId");
 
             ObjectNode attributesMapNode = objectMapper.createObjectNode();

@@ -8,7 +8,7 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class BasicDetailsDto {
 
-    private String location_id;
+    private String locationId;
     private List<RestaurantSessionDto> restaurantSessionDto;
     private List<String> cuisines;
     private List<String> amenities;
