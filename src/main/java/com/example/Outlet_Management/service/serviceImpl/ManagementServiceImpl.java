@@ -11,12 +11,19 @@ import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
+import com.example.Outlet_Management.mapper.LocationMapper;
+import com.example.Outlet_Management.mapper.OnboardingMapper;
+import com.example.Outlet_Management.mapper.RegistrationMapper;
+import com.example.Outlet_Management.service.ImageService;
 import com.example.Outlet_Management.service.ManagementService;
 import com.example.Outlet_Management.util.Aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.Query;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +31,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import java.util.*;
+import java.util.stream.Collectors;
+
 import com.fasterxml.jackson.databind.node.ArrayNode;
+
 
 @Service
 @Slf4j
@@ -39,175 +49,96 @@ public class ManagementServiceImpl implements ManagementService {
     private AvailabilityDao availabilityDao;
     @Autowired
     private AWSCredentials awsCredentials;
+    @Autowired
+    private ImageService imageService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Autowired
+    private OnboardingMapper onboardingMapper;
+
+
+
 
 
     @Override
     public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
-
-        String id = UUID.randomUUID().toString();
-        MhLocation newLocation = new MhLocation();
-        newLocation.setMerchantId("8dfe7674-709d-431c-a233-628e839ecc76");
-        newLocation.setId(id);
-        newLocation.setRestaurantName(registrationDTO.getRestaurantName());
-        newLocation.setName(registrationDTO.getName());
-        newLocation.setPhone(registrationDTO.getPhone());
-        newLocation.setEmail(registrationDTO.getEmail());
-        if (newLocation.getAttributes() == null) {
-            newLocation.setAttributes("{}");
-        }
-
+        MhLocation newLocation = RegistrationMapper.INSTANCE.toMhLocation(registrationDTO);
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode json = objectMapper.createObjectNode();
         json.put("gstNumber", registrationDTO.getGstNumber());
-
         String updatedJson = objectMapper.writeValueAsString(json);
         newLocation.setAttributes(updatedJson);
-
-
-        if (registrationDTO.getBase64Image() != null) {
-            byte[] image = Base64.getDecoder().decode(registrationDTO.getBase64Image());
-            Tika tika = new Tika();
-            String mimiType = tika.detect(image);
-            Aws aws = new Aws();
-
-            if (aws.uploadFileToS3(id, image, mimiType, awsCredentials.getACCESS_KEY(), awsCredentials.getSECRET_KEY(), awsCredentials.getBUCKET_NAME())) {
-                MhMedia media = new MhMedia();
-                media.setId(UUID.randomUUID().toString());
-                media.setEntityId(id);
-                media.setEntityType("LOGO");
-                media.setFileName("cms_" + System.currentTimeMillis());
-                media.setTag(null);
-                media.setMimeType(mimiType);
-                media.setSortOrder(null);
-                mediaDao.saveMedia(media);
-
-            }
-        } else {
-            throw new ImageNotFoundException("Image not present in request body");
-        }
         locationDao.save(newLocation);
+        imageService.storeImage(newLocation.getId(), registrationDTO.getBase64Image(),"LOGO");
+
         return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
     }
 
-    @Override
-    public List<GetDto> getData(String id) throws LocationNotFoundException {
-        Optional<List<MhLocation>> optionalLocation = locationDao.findByMerchantId(id);
-        if (optionalLocation.get().isEmpty()) {
+
+
+
+
+    public List<GetDto> getData(String merchantId) throws LocationNotFoundException {
+        // Retrieve MhLocation entities
+        List<MhLocation> locations = entityManager.createQuery(
+                        "SELECT l FROM MhLocation l WHERE l.merchantId = :merchantId", MhLocation.class)
+                .setParameter("merchantId", merchantId)
+                .getResultList();
+
+        if (locations.isEmpty()) {
             throw new LocationNotFoundException("Invalid Merchant");
         }
-        List<MhLocation> location = optionalLocation.get();
-        List<GetDto> resultList = new ArrayList<>();
-        for (MhLocation locations : location) {
-            GetDto returndto = new GetDto();
 
-            returndto.setId(locations.getId());
-            returndto.setName(locations.getName());
-            returndto.setEmail(locations.getEmail());
-            returndto.setPhone(locations.getPhone());
-            returndto.setRestaurantName(locations.getRestaurantName());
-            returndto.setMerchantId(locations.getMerchantId());
-            returndto.setCity(locations.getCity());
-            returndto.setAddressLine1(locations.getAddressLine1());
-            returndto.setAddressLine2(locations.getAddressLine2());
-            returndto.setAddressLine3(locations.getAddressLine3());
-            returndto.setAttributes(locations.getAttributes());
-            returndto.setCountry(locations.getCountry());
-            returndto.setState(locations.getState());
-            returndto.setPinCode(locations.getPinCode());
-            List<MhMedia> mediaList = mediaDao.findByEntityId(locations.getId());
+        // Retrieve MhMedia entities for all locations
+        List<MhMedia> mediaList = entityManager.createQuery(
+                        "SELECT m FROM MhMedia m WHERE m.entityId IN :locationIds", MhMedia.class)
+                .setParameter("locationIds", locations.stream().map(MhLocation::getId).collect(Collectors.toList()))
+                .getResultList();
 
-            if (mediaList != null && !mediaList.isEmpty()) {
-                List<MediaDto> mediaDtoList = new ArrayList<>();
-                for (MhMedia media : mediaList) {
-                    MediaDto mediaDto = new MediaDto();
-                    mediaDto.setEntityId(media.getEntityId());
-                    mediaDto.setEntityType(media.getEntityType());
-                    mediaDto.setFileName(media.getFileName());
-                    mediaDto.setMimeType(media.getMimeType());
-                    mediaDto.setSortOrder(media.getSortOrder());
-                    mediaDto.setTag(media.getTag());
-                    mediaDtoList.add(mediaDto);
-                }
-                returndto.setMedia(mediaDtoList);
-            }
-            List<mhAvailability> availabilityList = availabilityDao.findAllByEntityId(locations.getId());
-            if (availabilityList != null) {
-                List<AvailabilityDto> availabilityDtoList = new ArrayList<>();
-                for (mhAvailability availability : availabilityList) {
-                    AvailabilityDto availabilityDto = new AvailabilityDto();
-                    availabilityDto.setName(availability.getName());
-                    availabilityDto.setCreatedTime(availability.getCreatedTime());
-                    availabilityDto.setEndTime(availability.getEndTime());
-                    availabilityDto.setWeekDay(availability.getWeekday());
-                    availabilityDtoList.add(availabilityDto);
-                }
-                returndto.setAvailabilityDtos(availabilityDtoList);
-            }
-            resultList.add(returndto);
-        }
-        return resultList;
+        // Retrieve mhAvailability entities for all locations
+        List<mhAvailability> availabilityList = entityManager.createQuery(
+                        "SELECT a FROM mhAvailability a WHERE a.locationId IN :locationIds", mhAvailability.class)
+                .setParameter("locationIds", locations.stream().map(MhLocation::getId).collect(Collectors.toList()))
+                .getResultList();
+
+        // Map entities to DTOs using MapStruct
+        return locations.stream()
+                .map(location -> LocationMapper.INSTANCE.toDto(location, mediaList, availabilityList))
+                .collect(Collectors.toList());
     }
 
 
-    @Override
-    public ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException {
-        Optional<MhLocation> locationData = locationDao.findById(onboardingDto.getRestaurant_details().getId());
 
-        String imageId = null;
+    @Override
+    public ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException, ImageNotFoundException {
+        Optional<MhLocation> locationData = locationDao.findById(onboardingDto.getRestaurant_details().getLocationId());
+
         if (!locationData.isPresent()) {
-            throw new LocationNotFoundException("location not present");
+            throw new LocationNotFoundException("Location not present");
         }
+
         MhLocation location = locationData.get();
-        if (onboardingDto.getRestaurant_details().getBusinessLegalName() != null && !onboardingDto.getRestaurant_details().getBusinessLegalName().equals(location.getRestaurantName())) {
-            location.setRestaurantName(onboardingDto.getRestaurant_details().getBusinessLegalName());
-        }
-        if (onboardingDto.getRestaurant_details().getPhone() != null && !onboardingDto.getRestaurant_details().getPhone().equals(location.getPhone())) {
-            location.setPhone(onboardingDto.getRestaurant_details().getPhone());
-        }
-        if (onboardingDto.getRestaurant_details().getEmail() != null && !onboardingDto.getRestaurant_details().getEmail().equals(location.getEmail())) {
-            location.setEmail(onboardingDto.getRestaurant_details().getEmail());
-        }
-        location.setAddressLine1(onboardingDto.getLocation_Details().getAddress());
-        location.setCity(onboardingDto.getLocation_Details().getCity());
-        location.setState(onboardingDto.getLocation_Details().getState());
-        location.setPinCode(onboardingDto.getLocation_Details().getPinCode());
-        location.setCountry(onboardingDto.getLocation_Details().getCountry());
+        onboardingMapper.updateMhLocationFromOnboardingDto(onboardingDto, location);
 
         ObjectMapper objectMapper = new ObjectMapper();
-        FssaiDto fssaiDetailsJson = onboardingDto.getFssai_details();
-        BankDto bank = onboardingDto.getBank_details();
+        ObjectNode attributesNode = objectMapper.createObjectNode();
 
-        if (onboardingDto.getFssai_details().getDocuments() != null && !onboardingDto.getFssai_details().getDocuments().isEmpty()) {
-            byte[] imageBytes = Base64.getDecoder().decode(onboardingDto.getFssai_details().getDocuments());
-            String fileName = String.valueOf("cms_" + System.currentTimeMillis());
-            Tika tika = new Tika();
-            String mimeType = tika.detect(imageBytes);
-            try {
-                Aws awsCloudUtil = new Aws();
-                awsCloudUtil.uploadFileToS3(fileName, imageBytes, mimeType, awsCredentials.getACCESS_KEY(), awsCredentials.getSECRET_KEY(), awsCredentials.getBUCKET_NAME());
+        if (onboardingDto.getFssai_details() != null) {
+            FssaiDto fssaiDetailsJson = onboardingDto.getFssai_details();
 
-                MhMedia media = new MhMedia();
-                media.setId(UUID.randomUUID().toString());
-                media.setEntityId(location.getId());
-                media.setEntityType("FSSAI_DOCUMENT");
-                media.setFileName(fileName);
-                media.setMimeType(mimeType);
-                imageId = media.getId();
-                mediaDao.saveMedia(media);
-            } catch (Exception e) {
-                throw new AWSImageUploadFailedException("Failed to upload image to AWS S3", e);
+
+            if (onboardingDto.getFssai_details().getDocuments() != null && !onboardingDto.getFssai_details().getDocuments().isEmpty()) {
+                String fileName=imageService.storeImage(onboardingDto.getRestaurant_details().getLocationId(), onboardingDto.getFssai_details().getDocuments(), "FSSAI_DOCUMENT");
+                fssaiDetailsJson.setDocuments(fileName);
+                JsonNode fssaiNode = objectMapper.valueToTree(onboardingDto.getFssai_details());
+                attributesNode.set("FSSAIDetails", fssaiNode);
             }
         }
 
-        ObjectNode attributesNode = objectMapper.createObjectNode();
-
-        if (onboardingDto.getFssai_details().getIsEnabled().equalsIgnoreCase("yes")) {
-            fssaiDetailsJson.setDocuments(imageId);
-            JsonNode fssaiNode = objectMapper.valueToTree(fssaiDetailsJson);
-            attributesNode.set("FSSAIDetails", fssaiNode);
-        }
         if (onboardingDto.getBank_details() != null) {
-            JsonNode bankNode = objectMapper.valueToTree(bank);
+            JsonNode bankNode = objectMapper.valueToTree(onboardingDto.getBank_details());
             attributesNode.set("BankDetails", bankNode);
         }
 
@@ -221,6 +152,7 @@ public class ManagementServiceImpl implements ManagementService {
         JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
         JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
         location.setAttributes(objectMapper.writeValueAsString(mergeData));
+
         locationDao.save(location);
 
         return ResponseEntity.status(HttpStatus.OK).body("Success");
@@ -298,47 +230,14 @@ public class ManagementServiceImpl implements ManagementService {
 
 
     @Override
-    public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException {
+    public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException {
         if (restaurantImgDTO.getProfileImg() != null) {
-            byte[] imageBytes = Base64.getDecoder().decode(restaurantImgDTO.getProfileImg());
-            String fileName = String.valueOf("cms_" + System.currentTimeMillis());
-            Tika tika = new Tika();
-            String mimeType = tika.detect(imageBytes);
-            try {
-                Aws awsCloudUtil = new Aws();
-                awsCloudUtil.uploadFileToS3(fileName, imageBytes, mimeType, awsCredentials.getACCESS_KEY(), awsCredentials.getSECRET_KEY(), awsCredentials.getBUCKET_NAME());
-                MhMedia media = new MhMedia();
-                media.setId(UUID.randomUUID().toString());
-                media.setEntityId(restaurantImgDTO.getLocationId());
-                media.setEntityType("profile_Img");
-
-                media.setFileName(fileName);
-                media.setMimeType(mimeType);
-                mediaDao.saveMedia(media);
-            } catch (Exception e) {
-                throw new AWSImageUploadFailedException("Failed to upload image to AWS S3", e);
-            }
+            imageService.storeImage(restaurantImgDTO.getLocationId(),restaurantImgDTO.getProfileImg(),"Profile_Image");
 
         }
         if (restaurantImgDTO.getRestaurantImgs() != null) {
             for (String restImg : restaurantImgDTO.getRestaurantImgs()) {
-                byte[] imageBytes = Base64.getDecoder().decode(restImg);
-                String fileName = String.valueOf("cms_" + System.currentTimeMillis());
-                Tika tika = new Tika();
-                String mimeType = tika.detect(imageBytes);
-                try {
-                    Aws awsCloudUtil = new Aws();
-                    awsCloudUtil.uploadFileToS3(fileName, imageBytes, mimeType, awsCredentials.getACCESS_KEY(), awsCredentials.getSECRET_KEY(), awsCredentials.getBUCKET_NAME());
-                    MhMedia media = new MhMedia();
-                    media.setId(UUID.randomUUID().toString());
-                    media.setEntityId(restaurantImgDTO.getLocationId());
-                    media.setEntityType("restaurant_Img");
-                    media.setFileName(fileName);
-                    media.setMimeType(mimeType);
-                    mediaDao.saveMedia(media);
-                } catch (Exception e) {
-                    throw new AWSImageUploadFailedException("Failed to upload image to AWS S3", e);
-                }
+                imageService.storeImage(restaurantImgDTO.getLocationId(),restImg,"Restaurant_Image");
             }
         }
         return ResponseEntity.status(HttpStatus.OK).body("Success");
@@ -359,15 +258,8 @@ public class ManagementServiceImpl implements ManagementService {
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
             attributesMapNode.set("DineInDetails", kitchenDtoJsonNode);
 
+            mergeAttributes(location,attributesMapNode);
 
-            String existingAttributes = location.getAttributes();
-            JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-
-            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
-
-            // Save merged attributes back to the location
-            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
-            locationDao.save(location);
         } else {
             throw new LocationNotFoundException();
         }
@@ -387,17 +279,8 @@ public class ManagementServiceImpl implements ManagementService {
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
             attributesMapNode.set("PickUpDetails", pickupDtoJsonNode);
 
-            // Get existing attributes
-            String existingAttributes = location.getAttributes();
-            JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+           mergeAttributes(location,attributesMapNode);
 
-            // Merge new attributes with the existing attributes
-            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
-
-            // Save merged attributes back to the location
-            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
-
-            locationDao.save(location);
 
         } else {
             throw new LocationNotFoundException();
@@ -414,21 +297,13 @@ public class ManagementServiceImpl implements ManagementService {
         if (existingLocation.isPresent()) {
             MhLocation location = existingLocation.get();
             ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(kitchenDto);
-
             kitchenDtoJsonNode.remove("locationId");
 
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
             attributesMapNode.set("KitchenDetails", kitchenDtoJsonNode);
+            mergeAttributes(location,attributesMapNode);
 
 
-            String existingAttributes = location.getAttributes();
-            JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-
-            ((ObjectNode) oldAttributes).setAll(attributesMapNode);
-
-            // Save merged attributes back to the location
-            location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
-            locationDao.save(location);
         } else {
             throw new LocationNotFoundException();
         }
@@ -479,20 +354,24 @@ public class ManagementServiceImpl implements ManagementService {
                   ObjectNode attributesMapNode = objectMapper.createObjectNode();
                   attributesMapNode.set("DeliveryDetails", deliveryDtoJsonNode);
 
-                    // Get existing attributes
-                    String existingAttributes = location.getAttributes();
-                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-
-                    // Merge new attributes with the existing attributes
-                    ((ObjectNode) oldAttributes).setAll(attributesMapNode);
-
-                    // Save merged attributes back to the location
-                    location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
-                    locationDao.save(location);
-
-                    return ResponseEntity.status(HttpStatus.OK).body("Success");
+                  mergeAttributes(location,attributesMapNode);
+                  return ResponseEntity.status(HttpStatus.OK).body("Success");
                 }
         throw new LocationNotFoundException();
+    }
+
+    public void mergeAttributes(MhLocation location,ObjectNode attributesMapNode) throws JsonProcessingException {
+        ObjectMapper objectMapper = new ObjectMapper();
+        String existingAttributes = location.getAttributes();
+        JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+
+        // Merge new attributes with the existing attributes
+        ((ObjectNode) oldAttributes).setAll(attributesMapNode);
+
+        // Save merged attributes back to the location
+        location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
+
+        locationDao.save(location);
     }
 
 }

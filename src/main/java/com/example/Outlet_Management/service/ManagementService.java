@@ -15,11 +15,11 @@ public interface ManagementService {
 
     List<GetDto> getData(String id) throws LocationNotFoundException;
 
-    ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException;
+    ResponseEntity<String> onboarding(OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException, ImageNotFoundException;
 
     ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws Exception;
 
-    ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException;
+    ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException;
 
     ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws Exception;
 

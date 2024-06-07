@@ -2,10 +2,13 @@ package com.example.Outlet_Management.entity;
 
 
 import jakarta.persistence.*;
+import jakarta.validation.constraints.Email;
 import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.annotations.GenericGenerator;
+
+import java.util.UUID;
 
 @Entity
 @Table(name="mh_location")
@@ -14,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class MhLocation {
 
+
     @Id
-    @Column(length = 36)
-    private String id;  //registered user credentials uuid id
+    @GeneratedValue(generator = "uuid2")
+    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+    private String id;
     @Column(length=36)
     private String merchantId;  //location id uuid
     @Column(length = 36)
@@ -26,6 +31,7 @@ public class MhLocation {
     @Column(length=20)
     private String phone;
     @Column(length=60)
+    @Email
     private String email;
     @Column(length=128)
     private String addressLine1;

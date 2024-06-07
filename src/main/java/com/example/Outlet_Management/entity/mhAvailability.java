@@ -1,8 +1,7 @@
 package com.example.Outlet_Management.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +14,8 @@ import lombok.RequiredArgsConstructor;
 public class mhAvailability {
     @Id
     private String id;
+    @NotBlank(message = "please add the locationId")
+    @Column(insertable = false, updatable = false)
     private String locationId;
     private String name;
     private String startTime;
@@ -24,4 +25,8 @@ public class mhAvailability {
     private Integer isEnabled;
     private String createdTime;
     private String modifiedTime;
+
+    @ManyToOne
+    @JoinColumn(name = "locationId") // Assuming entityId is the foreign key column name
+    private MhLocation location;
 }

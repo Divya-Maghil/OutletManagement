@@ -7,7 +7,7 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class RestaurantDto {
 
-    private String id;
+    private String locationId;
     private String businessLegalName;
     private String phone;
     private String email;
@@ -16,4 +16,6 @@ public class RestaurantDto {
     private String facebookLink;
     private String restaurantNumber;
     private String whatsappNumber;
+
+
 }
