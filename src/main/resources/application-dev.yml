@@ -3,10 +3,13 @@ spring:
     name: MenuDisplay
   datasource:
     driver-class-name: com.mysql.cj.jdbc.NonRegisteringDriver
-    url: jdbc:mysql://magilhub-intern.cb60w4qgw0y3.ap-south-1.rds.amazonaws.com:3306/A2B_Restaurant
+    url: jdbc:mysql://magilhub-intern.cb60w4qgw0y3.ap-south-1.rds.amazonaws.com:3306/outletManagement
     username: Intern
     password: Internmagil
   jpa:
     hibernate:
+
+
+
       ddl-auto: update
     show-sql: true
