@@ -22,45 +22,45 @@ public class ManagementController {
     private ManagementService managementService;
 
 
-    @GetMapping("/{id}")
-    public List<GetDto> getLocation(@PathVariable String id) throws LocationNotFoundException {
-        return managementService.getData(id);
+    @GetMapping("/outlet/{merchantId}")
+    public List<GetDto> getLocation(@PathVariable String merchantId) throws LocationNotFoundException {
+        return managementService.getData(merchantId);
     }
 
-    @PostMapping("/registration")
+    @PostMapping("/outlet/registration")
     public ResponseEntity<String> Registration(@Valid @RequestBody RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
        return managementService.saveRegistration(registrationDTO);
    }
 
-   @PostMapping("/onBoarding")
+   @PostMapping("/outlet/onBoarding")
     public ResponseEntity<String> Onboarding(@Valid @RequestBody OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException, ImageNotFoundException {
         return managementService.onboarding(onboardingDto);
    }
 
-   @PostMapping("/basicDetails/properties")
+   @PostMapping("/outlet/basicDetails/properties")
     public ResponseEntity<String> postBasicDetails(@RequestBody BasicDetailsDto basicDetailsDto) throws Exception {
         return managementService.saveBasic(basicDetailsDto);
    }
 
-   @PostMapping("/restImg/properties")
+   @PostMapping("/outlet/restImg/properties")
     public ResponseEntity<String> saveImg(@RequestBody RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException {
         return managementService.saveRestaurantImg(restaurantImgDTO);
    }
-   @PostMapping("/dineIn/properties")
+   @PostMapping("/outlet/dineIn/properties")
     public ResponseEntity<String> saveDineIn(@RequestBody DineInDto dineInDto) throws Exception {
         return managementService.saveDineIn(dineInDto);
    }
-   @PostMapping("/pickUp/properties")
+   @PostMapping("/outlet/pickUp/properties")
     public ResponseEntity<String> savePickup(@RequestBody PickupDto pickupDto) throws Exception {
         return managementService.savePickup(pickupDto);
    }
 
-   @PostMapping("/kitchen/properties")
+   @PostMapping("/outlet/kitchen/properties")
     public ResponseEntity<String> saveKitchen(@RequestBody KitchenDto kitchenDto) throws Exception {
         return managementService.saveKitchen(kitchenDto);
    }
 
-   @PostMapping("/delivery/properties")
+   @PostMapping("/outlet/delivery/properties")
     public ResponseEntity<String> saveDelivery(@RequestBody DeliveryDto deliveryDto) throws Exception {
         return managementService.saveDelivery(deliveryDto);
    }

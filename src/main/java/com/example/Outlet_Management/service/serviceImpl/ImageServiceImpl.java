@@ -33,7 +33,7 @@ public class ImageServiceImpl implements ImageService {
                 Aws aws = new Aws();
 
                 // Generate a unique key for the image
-                String key = "cms_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString();
+                String key = "oms_" + System.currentTimeMillis() + "_" + UUID.randomUUID().toString();
 
                 if (aws.uploadFileToS3(key, image, mimeType, awsCredentials.getACCESS_KEY(), awsCredentials.getSECRET_KEY(), awsCredentials.getBUCKET_NAME())) {
                     MhMedia media = new MhMedia();
