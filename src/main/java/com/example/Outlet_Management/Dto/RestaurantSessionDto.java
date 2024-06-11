@@ -7,7 +7,5 @@ import java.util.List;
 @Data
 public class RestaurantSessionDto {
     private String name;
-    private String start_time;
-    private String end_time;
-    private List<String> weekday;
+    private List<BasicTimeDto> BasicTime;
 }

@@ -13,6 +13,6 @@ public class BasicDetailsDto {
     private List<String> cuisines;
     private List<String> amenities;
     private List<String> parking;
-    private List<String> safetyMeasures;
+    private String safetyMeasures;
     private String alcohol;
 }

@@ -1,5 +1,6 @@
 package com.example.Outlet_Management.service.serviceImpl;
 
+
 import com.example.Outlet_Management.Dao.AvailabilityDao;
 import com.example.Outlet_Management.Dao.LocationDao;
 import com.example.Outlet_Management.Dao.MediaDao;
@@ -16,16 +17,13 @@ import com.example.Outlet_Management.mapper.OnboardingMapper;
 import com.example.Outlet_Management.mapper.RegistrationMapper;
 import com.example.Outlet_Management.service.ImageService;
 import com.example.Outlet_Management.service.ManagementService;
-import com.example.Outlet_Management.util.Aws;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
-import jakarta.persistence.Query;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -167,6 +165,7 @@ public class ManagementServiceImpl implements ManagementService {
     public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
         final ObjectMapper objectMapper = new ObjectMapper();
         List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
+
         Optional<MhLocation> existingLocation = locationDao.findById(basicDetailsDto.getLocationId());
 
         if (existingLocation.isPresent()) {
@@ -174,67 +173,71 @@ public class ManagementServiceImpl implements ManagementService {
 
             if (!sessionDtos.isEmpty()) {
                 for (RestaurantSessionDto sessionDto : sessionDtos) {
-                    int count = sessionDto.getWeekday().size();
-                    int len = sessionDto.getWeekday().size();
+                    List<BasicTimeDto> basicTimeDtos = sessionDto.getBasicTime();
+                    if (basicTimeDtos != null) {
+                        for (BasicTimeDto basicTimeDto : basicTimeDtos) {
+                            int count = basicTimeDto.getWeekday().size();
+                            int len = basicTimeDto.getWeekday().size();
 
-                    while (count > 0) {
-                        mhAvailability availability = new mhAvailability();
-                        availability.setName(sessionDto.getName());
-                        availability.setId(UUID.randomUUID().toString());
-                        availability.setLocationId(location.getId());
-                        availability.setStartTime(sessionDto.getStart_time());
-                        availability.setEndTime(sessionDto.getEnd_time());
-                        availability.setWeekday(numberingDays(sessionDto.getWeekday().get(len - count)));
-
-                        availabilityDao.save(availability);
-                        count--;
+                            while (count > 0) {
+                                mhAvailability availability = new mhAvailability();
+                                availability.setName(sessionDto.getName());
+                                availability.setId(UUID.randomUUID().toString());
+                                availability.setLocationId(location.getId());
+                                availability.setStartTime(basicTimeDto.getStart_time());
+                                availability.setEndTime(basicTimeDto.getEnd_time());
+                                availability.setWeekday(numberingDays(basicTimeDto.getWeekday().get(len - count)));
+                                availabilityDao.save(availability);
+                                count--;
+                            }
+                        }
                     }
+
+
+                    ObjectNode attributesNode = objectMapper.createObjectNode();
+
+                    if (basicDetailsDto.getCuisines() != null) {
+                        ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
+                        attributesNode.set("cuisines", cuisinesArray);
+                    }
+                    if (basicDetailsDto.getAmenities() != null) {
+                        ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
+                        attributesNode.set("amenities", amenitiesArray);
+                    }
+                    if (basicDetailsDto.getParking() != null) {
+                        ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
+                        attributesNode.set("parking", parkingArray);
+                    }
+                    if (basicDetailsDto.getSafetyMeasures() != null) {
+                        attributesNode.put("SafetyMeasures",basicDetailsDto.getSafetyMeasures());
+                    }
+
+                    String existingAttributes = location.getAttributes();
+                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
+
+                    location.setAttributes(objectMapper.writeValueAsString(mergeData));
+                    locationDao.save(location);
                 }
 
-                ObjectNode attributesNode = objectMapper.createObjectNode();
-
-                if (basicDetailsDto.getCuisines() != null) {
-                    ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
-                    attributesNode.set("cuisines", cuisinesArray);
-                }
-                if (basicDetailsDto.getAmenities() != null) {
-                    ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
-                    attributesNode.set("amenities", amenitiesArray);
-                }
-                if (basicDetailsDto.getParking() != null) {
-                    ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
-                    attributesNode.set("parking", parkingArray);
-                }
-                if (basicDetailsDto.getSafetyMeasures() != null) {
-                    ArrayNode safetyMeasuresArray = objectMapper.valueToTree(basicDetailsDto.getSafetyMeasures());
-                    attributesNode.set("safetyMeasures", safetyMeasuresArray);
-                }
-
-                String existingAttributes = location.getAttributes();
-                JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-                JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
-
-                location.setAttributes(objectMapper.writeValueAsString(mergeData));
-                locationDao.save(location);
-            } else {
+            }
+        }else {
                 throw new LocationNotFoundException();
             }
-        } else {
-            throw new LocationNotFoundException();
+
+            return ResponseEntity.status(HttpStatus.OK).body("Success");
         }
 
-        return ResponseEntity.status(HttpStatus.OK).body("Success");
-    }
 
     private String numberingDays(String weekday) {
         Map<String, String> dayMap = new HashMap<>();
-        dayMap.put("Monday", "1");
-        dayMap.put("Tuesday", "2");
-        dayMap.put("Wednesday", "3");
-        dayMap.put("Thursday", "4");
-        dayMap.put("Friday", "5");
-        dayMap.put("Saturday", "6");
-        dayMap.put("Sunday", "7");
+        dayMap.put("monday", "1");
+        dayMap.put("tuesday", "2");
+        dayMap.put("wednesday", "3");
+        dayMap.put("thursday", "4");
+        dayMap.put("friday", "5");
+        dayMap.put("saturday", "6");
+        dayMap.put("sunday", "7");
         dayMap.put(null, "8");
         return dayMap.get(weekday);
     }

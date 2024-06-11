@@ -6,6 +6,7 @@ import java.util.List;
 
 @Data
 public class PickupDto {
+
     private String locationId;
     private String serviceTimeFrom;
     private String serviceTimeTo;

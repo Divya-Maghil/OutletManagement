@@ -8,6 +8,7 @@ public class AWSImageUploadFailedException extends Exception{
     }
 
     public AWSImageUploadFailedException(String message) {
+
         super(message);
     }
 
