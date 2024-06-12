@@ -17,8 +17,7 @@ import java.util.UUID;
 public class MhMedia {
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     @NotBlank(message = "please send the location id.,")
     private String entityId;

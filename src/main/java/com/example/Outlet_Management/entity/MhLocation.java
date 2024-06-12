@@ -19,8 +19,7 @@ public class MhLocation {
 
 
     @Id
-    @GeneratedValue(generator = "uuid2")
-    @GenericGenerator(name = "uuid2", strategy = "org.hibernate.id.UUIDGenerator")
+    @GeneratedValue(strategy = GenerationType.UUID)
     private String id;
     @Column(length=36)
     private String merchantId;  //location id uuid

@@ -3,9 +3,7 @@ package com.example.Outlet_Management.service.serviceImpl;
 
 import com.example.Outlet_Management.Dao.AvailabilityDao;
 import com.example.Outlet_Management.Dao.LocationDao;
-import com.example.Outlet_Management.Dao.MediaDao;
 import com.example.Outlet_Management.Dto.*;
-import com.example.Outlet_Management.config.AWSCredentials;
 import com.example.Outlet_Management.entity.MhLocation;
 import com.example.Outlet_Management.entity.MhMedia;
 import com.example.Outlet_Management.entity.mhAvailability;
@@ -23,8 +21,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -36,34 +34,19 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 
 @Service
 @Slf4j
+@AllArgsConstructor
 public class ManagementServiceImpl implements ManagementService {
 
-    @Autowired
-    private LocationDao locationDao;
 
-    @Autowired
-    private MediaDao mediaDao;
-    @Autowired
+    private LocationDao locationDao;
     private AvailabilityDao availabilityDao;
-    @Autowired
-    private AWSCredentials awsCredentials;
-    @Autowired
     private ImageService imageService;
+    private RegistrationMapper registrationMapper;
+    private OnboardingMapper onboardingMapper;
+    private LocationMapper locationMapper;
 
     @PersistenceContext
     private EntityManager entityManager;
-
-    @Autowired
-    private RegistrationMapper registrationMapper;
-
-    @Autowired
-    private OnboardingMapper onboardingMapper;
-
-    @Autowired
-    private LocationMapper locationMapper;
-
-
-
 
 
     @Override
@@ -98,19 +81,33 @@ public class ManagementServiceImpl implements ManagementService {
         // Retrieve MhMedia entities for all locations
         List<MhMedia> mediaList = entityManager.createQuery(
                         "SELECT m FROM MhMedia m WHERE m.entityId IN :locationIds", MhMedia.class)
-                .setParameter("locationIds", locations.stream().map(MhLocation::getId).collect(Collectors.toList()))
+                .setParameter("locationIds", locationIds)
                 .getResultList();
 
         // Retrieve mhAvailability entities for all locations
         List<mhAvailability> availabilityList = entityManager.createQuery(
                         "SELECT a FROM mhAvailability a WHERE a.locationId IN :locationIds", mhAvailability.class)
-                .setParameter("locationIds", locations.stream().map(MhLocation::getId).collect(Collectors.toList()))
+                .setParameter("locationIds", locationIds)
                 .getResultList();
 
         // Map entities to DTOs using MapStruct
+//        return locations.stream()
+//                .map(location -> locationMapper.toDto(location, mediaList, availabilityList))
+//                .collect(Collectors.toList());
+
         return locations.stream()
-                .map(location -> locationMapper.toDto(location, mediaList, availabilityList))
-                .collect(Collectors.toList());
+                .map(location -> {
+                    List<MhMedia> locationMedia = mediaList.stream()
+                            .filter(media -> media.getEntityId().equals(location.getId()))
+                            .collect(Collectors.toList());
+
+                    List<mhAvailability> locationAvailability = availabilityList.stream()
+                            .filter(availability -> availability.getLocationId().equals(location.getId()))
+                            .collect(Collectors.toList());
+
+                    return locationMapper.toDto(location, locationMedia, locationAvailability);
+                }).toList();
+
     }
 
 

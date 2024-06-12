@@ -9,18 +9,16 @@ import com.example.Outlet_Management.entity.mhAvailability;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Mappings;
-import org.mapstruct.factory.Mappers;
-
 import java.util.List;
+
 
 @Mapper(componentModel = "spring")
 public interface LocationMapper {
 
-    LocationMapper INSTANCE = Mappers.getMapper(LocationMapper.class);
-
     @Mappings({
-            @Mapping(source = "location.id", target = "id"),
-            @Mapping(source = "location.merchantId", target = "merchantId"),
+//            @Mapping(source = "location.id", target = "location.id"),
+//            @Mapping(source = "location.merchantId", target = "location.merchantId"),
+            @Mapping(source = "location",target = "location"),
             @Mapping(source = "mediaList", target = "media"),
             @Mapping(source = "availabilityList", target = "availabilityDtos")
     })
@@ -29,4 +27,5 @@ public interface LocationMapper {
     MediaDto toMediaDto(MhMedia media);
 
     AvailabilityDto toAvailabilityDto(mhAvailability availability);
+
 }

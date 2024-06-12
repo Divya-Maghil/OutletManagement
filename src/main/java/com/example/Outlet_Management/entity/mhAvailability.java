@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 public class mhAvailability {
     @Id
     private String id;
-
     private String locationId;
     private String name;
     private String startTime;
