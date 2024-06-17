@@ -32,7 +32,7 @@ public class ManagementController {
        return managementService.saveRegistration(registrationDTO);
    }
 
-   @PostMapping("/outlet/onBoarding")
+   @PostMapping(".")
     public ResponseEntity<String> Onboarding(@Valid @RequestBody OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException, ImageNotFoundException {
         return managementService.onboarding(onboardingDto);
    }

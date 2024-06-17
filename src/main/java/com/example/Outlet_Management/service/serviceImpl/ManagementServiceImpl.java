@@ -90,11 +90,6 @@ public class ManagementServiceImpl implements ManagementService {
                 .setParameter("locationIds", locationIds)
                 .getResultList();
 
-        // Map entities to DTOs using MapStruct
-//        return locations.stream()
-//                .map(location -> locationMapper.toDto(location, mediaList, availabilityList))
-//                .collect(Collectors.toList());
-
         return locations.stream()
                 .map(location -> {
                     List<MhMedia> locationMedia = mediaList.stream()
@@ -263,12 +258,12 @@ public class ManagementServiceImpl implements ManagementService {
         ObjectMapper objectMapper = new ObjectMapper();
         if (existingLocation.isPresent()) {
             MhLocation location = existingLocation.get();
-            ObjectNode kitchenDtoJsonNode = objectMapper.valueToTree(dineInDto);
+            ObjectNode dineInDtoJsonNode = objectMapper.valueToTree(dineInDto);
 
-            kitchenDtoJsonNode.remove("locationId");
+            dineInDtoJsonNode.remove("locationId");
 
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
-            attributesMapNode.set("DineInDetails", kitchenDtoJsonNode);
+            attributesMapNode.set("DineInDetails", dineInDtoJsonNode);
 
             mergeAttributes(location,attributesMapNode);
 
