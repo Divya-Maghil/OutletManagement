@@ -10,7 +10,7 @@ public class OnboardingDto {
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private RestaurantDto restaurant_details;
         @JsonInclude(JsonInclude.Include.NON_NULL)
-        private FssaiDto Fssai_details;
+        private FssaiDto fssai_details;
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private BankDto bank_details;
         @JsonInclude(JsonInclude.Include.NON_NULL)

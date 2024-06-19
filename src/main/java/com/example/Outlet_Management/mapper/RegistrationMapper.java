@@ -13,6 +13,7 @@ public interface RegistrationMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "merchantId", constant = "8dfe7674-709d-431c-a233-628e839ecc76")
     @Mapping(target = "attributes", ignore = true)
+
     MhLocation toMhLocation(RegistrationDTO registrationDTO);
 
 }

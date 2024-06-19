@@ -4,6 +4,7 @@ import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
+import com.example.Outlet_Management.error.MerchantNotFoundException;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import org.springframework.http.ResponseEntity;
 import java.util.List;
@@ -28,4 +29,6 @@ public interface ManagementService {
     ResponseEntity<String> saveKitchen(KitchenDto kitchenDto) throws Exception;
 
     ResponseEntity<String> saveDelivery(DeliveryDto deliveryDto) throws Exception;
+
+    List<getLocation> getListOfLocation(String merchantId) throws MerchantNotFoundException;
 }

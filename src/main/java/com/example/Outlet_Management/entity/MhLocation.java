@@ -20,9 +20,9 @@ public class MhLocation {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
-    private String id;
+    private String id;//location id uuid
     @Column(length=36)
-    private String merchantId;  //location id uuid
+    private String merchantId;
     @Column(length = 36)
     private String restaurantName;
     @Column(length = 36)

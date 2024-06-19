@@ -10,6 +10,7 @@ import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
+import com.example.Outlet_Management.error.MerchantNotFoundException;
 import com.example.Outlet_Management.mapper.LocationMapper;
 import com.example.Outlet_Management.mapper.OnboardingMapper;
 import com.example.Outlet_Management.mapper.RegistrationMapper;
@@ -63,19 +64,29 @@ public class ManagementServiceImpl implements ManagementService {
         return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
     }
 
-
+    @Override
+    public List<getLocation> getListOfLocation(String merchantId) throws MerchantNotFoundException {
+             List<getLocation> locationList = entityManager.createQuery(
+                "select new getLocation(l.Id,l.restaurantName) from MhLocation l where l.merchantId = :merchantId", getLocation.class)
+                .setParameter("merchantId", merchantId)
+                .getResultList();
+             if(locationList.isEmpty()){
+                 throw new MerchantNotFoundException("No locations found for merchant ID: " + merchantId);
+             }
+             return locationList;
+    }
 
 
     @Override
-    public List<GetDto> getData(String merchantId) throws LocationNotFoundException {
+    public List<GetDto> getData(String locationId) throws LocationNotFoundException {
         // Retrieve MhLocation entities
         List<MhLocation> locations = entityManager.createQuery(
-                        "SELECT l FROM MhLocation l WHERE l.merchantId = :merchantId", MhLocation.class)
-                .setParameter("merchantId", merchantId)
+                        "SELECT l FROM MhLocation l WHERE l.Id = :locationId", MhLocation.class)
+                .setParameter("locationId", locationId)
                 .getResultList();
 
         if (locations.isEmpty()) {
-            throw new LocationNotFoundException("Invalid Merchant");
+            throw new LocationNotFoundException("Invalid location");
         }
         List<String> locationIds = locations.stream().map(MhLocation::getId).toList();
         // Retrieve MhMedia entities for all locations
@@ -188,17 +199,19 @@ public class ManagementServiceImpl implements ManagementService {
 
                     ObjectNode attributesNode = objectMapper.createObjectNode();
 
-                    if (basicDetailsDto.getCuisines() != null) {
+                    if (basicDetailsDto.getCuisines() != null  &&  !basicDetailsDto.getCuisines().isEmpty()) {
                         ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
                         attributesNode.set("cuisines", cuisinesArray);
-                    }
-                    if (basicDetailsDto.getAmenities() != null) {
+                    }else   attributesNode.remove("cuisines");
+                    if (basicDetailsDto.getAmenities() != null && !basicDetailsDto.getAmenities().isEmpty()) {
                         ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
                         attributesNode.set("amenities", amenitiesArray);
-                    }
-                    if (basicDetailsDto.getParking() != null) {
+                    }else   attributesNode.remove("amenities");
+                    if (basicDetailsDto.getParking() != null && !basicDetailsDto.getParking().isEmpty()) {
                         ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
                         attributesNode.set("parking", parkingArray);
+                    }else{
+                        attributesNode.remove("parking");
                     }
                     if (basicDetailsDto.getSafetyMeasures() != null) {
                         attributesNode.put("SafetyMeasures",basicDetailsDto.getSafetyMeasures());
@@ -366,6 +379,8 @@ public class ManagementServiceImpl implements ManagementService {
                 }
         throw new LocationNotFoundException();
     }
+
+
 
     public void mergeAttributes(MhLocation location,ObjectNode attributesMapNode) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();

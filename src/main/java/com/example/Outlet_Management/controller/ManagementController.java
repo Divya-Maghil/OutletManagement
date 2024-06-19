@@ -4,6 +4,7 @@ import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
+import com.example.Outlet_Management.error.MerchantNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
@@ -21,10 +22,15 @@ public class ManagementController {
     @Autowired
     private ManagementService managementService;
 
+    @GetMapping("/outlet/listOfLocation/{merchantId}")
+    public List<getLocation> getListOfLocations(@PathVariable String merchantId) throws MerchantNotFoundException {
+        return managementService.getListOfLocation(merchantId);
+    }
 
-    @GetMapping("/outlet/{merchantId}")
-    public List<GetDto> getLocation(@PathVariable String merchantId) throws LocationNotFoundException {
-        return managementService.getData(merchantId);
+
+    @GetMapping("/outlet/{locationId}")
+    public List<GetDto> getLocationDetails(@PathVariable String locationId) throws LocationNotFoundException {
+        return managementService.getData(locationId);
     }
 
     @PostMapping("/outlet/registration")
@@ -32,7 +38,7 @@ public class ManagementController {
        return managementService.saveRegistration(registrationDTO);
    }
 
-   @PostMapping(".")
+   @PostMapping("/outlet/onBoarding")
     public ResponseEntity<String> Onboarding(@Valid @RequestBody OnboardingDto onboardingDto) throws JsonProcessingException, AWSImageUploadFailedException, LocationNotFoundException, ImageNotFoundException {
         return managementService.onboarding(onboardingDto);
    }
