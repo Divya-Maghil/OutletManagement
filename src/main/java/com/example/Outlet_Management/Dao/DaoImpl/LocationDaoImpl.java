@@ -1,6 +1,7 @@
 package com.example.Outlet_Management.Dao.DaoImpl;
 
 import com.example.Outlet_Management.Dao.LocationDao;
+import com.example.Outlet_Management.Dto.GetLocationDto;
 import com.example.Outlet_Management.entity.MhLocation;
 import com.example.Outlet_Management.repo.LocationRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -29,4 +30,9 @@ public class LocationDaoImpl implements LocationDao {
     public Optional<MhLocation> findById(String id){
         return locationRepo.findById(id);
     }
+
+//    @Override
+//    public List<GetLocationDto> findLocationDetailsByMerchantId(String merchantId) {
+//     return  locationRepo.findLocationDetailsByMerchantId(merchantId);
+//    }
 }

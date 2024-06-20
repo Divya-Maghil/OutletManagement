@@ -1,7 +1,6 @@
 package com.example.Outlet_Management.entity;
 
 import jakarta.persistence.*;
-import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +17,8 @@ public class mhAvailability {
     private String name;
     private String startTime;
     private String endTime;
-    private String weekday;
+    @Column(name = "week_day")
+    private String weekDay;
     private Integer isDefault;
     private Integer isEnabled;
     private String createdTime;

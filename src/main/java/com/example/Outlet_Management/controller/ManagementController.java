@@ -4,12 +4,10 @@ import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
-import com.example.Outlet_Management.error.MerchantNotFoundException;
 import com.example.Outlet_Management.service.ManagementService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -23,8 +21,8 @@ public class ManagementController {
     private ManagementService managementService;
 
     @GetMapping("/outlet/listOfLocation/{merchantId}")
-    public List<getLocation> getListOfLocations(@PathVariable String merchantId) throws MerchantNotFoundException {
-        return managementService.getListOfLocation(merchantId);
+    public List<GetLocationDto> getListOfLocations(@PathVariable String merchantId) {
+     return  managementService.getListOfLocation(merchantId);
     }
 
 

@@ -24,8 +24,9 @@ public class AvailabilityDaoImpl implements AvailabilityDao {
 
     @Override
     public List<mhAvailability> findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(String id, String name, String s, String startTime, String endTime) {
-        return availabilityRepo.findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(id, name,  s,  startTime,  endTime);
+        return availabilityRepo.findByLocationIdAndNameAndWeekDayAndStartTimeAndEndTime(id, name, s, startTime, endTime);
     }
+
 
     @Override
     public List<mhAvailability> findByLocationId(String id) {

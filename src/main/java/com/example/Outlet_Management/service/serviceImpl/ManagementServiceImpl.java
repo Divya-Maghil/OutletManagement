@@ -4,13 +4,12 @@ package com.example.Outlet_Management.service.serviceImpl;
 import com.example.Outlet_Management.Dao.AvailabilityDao;
 import com.example.Outlet_Management.Dao.LocationDao;
 import com.example.Outlet_Management.Dto.*;
+import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.entity.MhLocation;
 import com.example.Outlet_Management.entity.MhMedia;
-import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.error.AWSImageUploadFailedException;
 import com.example.Outlet_Management.error.ImageNotFoundException;
 import com.example.Outlet_Management.error.LocationNotFoundException;
-import com.example.Outlet_Management.error.MerchantNotFoundException;
 import com.example.Outlet_Management.mapper.LocationMapper;
 import com.example.Outlet_Management.mapper.OnboardingMapper;
 import com.example.Outlet_Management.mapper.RegistrationMapper;
@@ -50,19 +49,6 @@ public class ManagementServiceImpl implements ManagementService {
     private EntityManager entityManager;
 
 
-//    @Override
-//    public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
-//        MhLocation newLocation = registrationMapper.toMhLocation(registrationDTO);
-//        ObjectMapper objectMapper = new ObjectMapper();
-//        ObjectNode json = objectMapper.createObjectNode();
-//        json.put("gstNumber", registrationDTO.getGstNumber());
-//        String updatedJson = objectMapper.writeValueAsString(json);
-//        newLocation.setAttributes(updatedJson);
-//        locationDao.save(newLocation);
-//        imageService.storeImage(newLocation.getId(), registrationDTO.getBase64Image(),"LOGO");
-//
-//        return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
-//    }
     @Override
     public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
         String locationId=registrationDTO.getLocationId();
@@ -101,15 +87,12 @@ public class ManagementServiceImpl implements ManagementService {
     }
 
     @Override
-    public List<getLocation> getListOfLocation(String merchantId) throws MerchantNotFoundException {
-             List<getLocation> locationList = entityManager.createQuery(
-                "select new getLocation(l.Id,l.restaurantName) from MhLocation l where l.merchantId = :merchantId", getLocation.class)
-                .setParameter("merchantId", merchantId)
-                .getResultList();
-             if(locationList.isEmpty()){
-                 throw new MerchantNotFoundException("No locations found for merchant ID: " + merchantId);
-             }
-             return locationList;
+    public List<GetLocationDto> getListOfLocation(String merchantId)  {
+        Optional<List<MhLocation>> locationsOptional = locationDao.findByMerchantId(merchantId);
+        List<MhLocation> locations = locationsOptional.get();
+        return locations.stream()
+                .map(location -> new GetLocationDto(location.getId(), location.getRestaurantName()))
+                .collect(Collectors.toList());
     }
 
 
@@ -137,16 +120,18 @@ public class ManagementServiceImpl implements ManagementService {
                 .setParameter("locationIds", locationIds)
                 .getResultList();
 
+
         return locations.stream()
                 .map(location -> {
-                    List<MhMedia> locationMedia = mediaList.stream()
+                    List<MediaDto> locationMedia = mediaList.stream()
                             .filter(media -> media.getEntityId().equals(location.getId()))
+                            .map(locationMapper :: toMediaDto)
                             .collect(Collectors.toList());
 
-                    List<mhAvailability> locationAvailability = availabilityList.stream()
+                    List<AvailabilityDto> locationAvailability = availabilityList.stream()
                             .filter(availability -> availability.getLocationId().equals(location.getId()))
+                            .map(locationMapper::toAvailabilityDto)
                             .collect(Collectors.toList());
-
                     return locationMapper.toDto(location, locationMedia, locationAvailability);
                 }).toList();
 
@@ -234,7 +219,7 @@ public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws 
                             availability.setLocationId(location.getId());
                             availability.setStartTime(basicTimeDto.getStart_time());
                             availability.setEndTime(basicTimeDto.getEnd_time());
-                            availability.setWeekday(numberingDays(weekday));
+                            availability.setWeekDay(numberingDays(weekday));
                             availabilityDao.save(availability);
 
                             updatedAvailabilityIds.add(availability.getId());
@@ -308,18 +293,29 @@ public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws 
         return dayMap.get(weekday);
     }
 
-    @Override
-    public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException {
-        if (restaurantImgDTO.getProfileImg() != null) {
-            imageService.storeImage(restaurantImgDTO.getLocationId(),restaurantImgDTO.getProfileImg(),"Profile_Image");
-        }
-        if (restaurantImgDTO.getRestaurantImgs() != null) {
-            for (String restImg : restaurantImgDTO.getRestaurantImgs()) {
-                imageService.storeImage(restaurantImgDTO.getLocationId(),restImg,"Restaurant_Image");
+@Override
+public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException {
+    boolean isImageUploaded = false;
+
+    if (restaurantImgDTO.getProfileImg() != null && !restaurantImgDTO.getProfileImg().isEmpty()) {
+        imageService.storeImage(restaurantImgDTO.getLocationId(), restaurantImgDTO.getProfileImg(), "Profile_Image");
+        isImageUploaded = true;
+    }
+    if (restaurantImgDTO.getRestaurantImgs() != null && !restaurantImgDTO.getRestaurantImgs().isEmpty()) {
+        for (String restImg : restaurantImgDTO.getRestaurantImgs()) {
+            if (restImg != null && !restImg.isEmpty()) {
+                imageService.storeImage(restaurantImgDTO.getLocationId(), restImg, "Restaurant_Image");
+                isImageUploaded = true;
             }
         }
-        return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
+
+    if (isImageUploaded) {
+        return ResponseEntity.status(HttpStatus.OK).body("Success");
+    } else {
+        return ResponseEntity.status(HttpStatus.OK).body("No images to upload");
+    }
+}
 
     @Override
     public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws LocationNotFoundException, JsonProcessingException {

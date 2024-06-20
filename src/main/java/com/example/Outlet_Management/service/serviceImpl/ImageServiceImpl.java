@@ -26,7 +26,7 @@ public class ImageServiceImpl implements ImageService {
 
     public String storeImage(String entityId, String base64Image, String entityType) throws ImageNotFoundException, AWSImageUploadFailedException {
         if (entityId != null) {
-            if (base64Image != null) {
+           // if (base64Image != null) {
                 byte[] image = Base64.getDecoder().decode(base64Image);
                 Tika tika = new Tika();
                 String mimeType = tika.detect(image);
@@ -46,9 +46,9 @@ public class ImageServiceImpl implements ImageService {
                 } else {
                     throw new AWSImageUploadFailedException("Failed to upload image to S3");
                 }
-            } else {
-                throw new ImageNotFoundException("Image not present in request body");
-            }
+//            } else {
+//                throw new ImageNotFoundException("Image not present in request body");
+//            }
         }else{
             throw new IllegalArgumentException("exception Id is blank");
         }
