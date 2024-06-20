@@ -11,4 +11,8 @@ public interface AvailabilityRepo extends JpaRepository<mhAvailability,String> {
 
 
     List<mhAvailability> findAllByLocationId(String id);
+
+    List<mhAvailability> findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(String id, String name, String s, String startTime, String endTime);
+
+    void delete(mhAvailability availability);
 }

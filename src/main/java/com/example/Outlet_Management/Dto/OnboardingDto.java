@@ -15,5 +15,4 @@ public class OnboardingDto {
         private BankDto bank_details;
         @JsonInclude(JsonInclude.Include.NON_NULL)
         private LocationDto location_Details;
-
 }

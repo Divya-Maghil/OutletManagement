@@ -50,18 +50,54 @@ public class ManagementServiceImpl implements ManagementService {
     private EntityManager entityManager;
 
 
+//    @Override
+//    public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
+//        MhLocation newLocation = registrationMapper.toMhLocation(registrationDTO);
+//        ObjectMapper objectMapper = new ObjectMapper();
+//        ObjectNode json = objectMapper.createObjectNode();
+//        json.put("gstNumber", registrationDTO.getGstNumber());
+//        String updatedJson = objectMapper.writeValueAsString(json);
+//        newLocation.setAttributes(updatedJson);
+//        locationDao.save(newLocation);
+//        imageService.storeImage(newLocation.getId(), registrationDTO.getBase64Image(),"LOGO");
+//
+//        return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
+//    }
     @Override
     public ResponseEntity<String> saveRegistration(RegistrationDTO registrationDTO) throws ImageNotFoundException, AWSImageUploadFailedException, JsonProcessingException {
-        MhLocation newLocation = registrationMapper.toMhLocation(registrationDTO);
+        String locationId=registrationDTO.getLocationId();
+        if(locationId!=null) {
+            MhLocation existingLocation = locationDao.findById(registrationDTO.getLocationId()).orElse(null);
+            registrationMapper.updateMhLocation(registrationDTO, existingLocation);
+
+            String updatedJson = createAttributesJson(registrationDTO);
+            existingLocation.setAttributes(updatedJson);
+
+            locationDao.save(existingLocation);
+            if(registrationDTO.getBase64Image()!=null) {
+                imageService.storeImage(existingLocation.getId(), registrationDTO.getBase64Image(), "LOGO");
+            }
+            return ResponseEntity.status(HttpStatus.OK).body(existingLocation.getId());
+        }
+        else {
+
+            MhLocation newLocation = registrationMapper.toMhLocation(registrationDTO);
+            String updatedJson = createAttributesJson(registrationDTO);
+            newLocation.setAttributes(updatedJson);
+            locationDao.save(newLocation);
+            if(registrationDTO.getBase64Image()!=null)
+                imageService.storeImage(newLocation.getId(), registrationDTO.getBase64Image(),"LOGO");
+
+            return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
+        }
+
+    }
+
+    private String createAttributesJson(RegistrationDTO registrationDTO) throws JsonProcessingException {
         ObjectMapper objectMapper = new ObjectMapper();
         ObjectNode json = objectMapper.createObjectNode();
         json.put("gstNumber", registrationDTO.getGstNumber());
-        String updatedJson = objectMapper.writeValueAsString(json);
-        newLocation.setAttributes(updatedJson);
-        locationDao.save(newLocation);
-        imageService.storeImage(newLocation.getId(), registrationDTO.getBase64Image(),"LOGO");
-
-        return ResponseEntity.status(HttpStatus.OK).body(newLocation.getId());
+        return objectMapper.writeValueAsString(json);
     }
 
     @Override
@@ -164,75 +200,100 @@ public class ManagementServiceImpl implements ManagementService {
 
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
-    @Override
-    public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
-        final ObjectMapper objectMapper = new ObjectMapper();
-        List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
 
-        Optional<MhLocation> existingLocation = locationDao.findById(basicDetailsDto.getLocationId());
 
-        if (existingLocation.isPresent()) {
-            MhLocation location = existingLocation.get();
+@Override
+public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws LocationNotFoundException, JsonProcessingException {
+    final ObjectMapper objectMapper = new ObjectMapper();
+    List<RestaurantSessionDto> sessionDtos = basicDetailsDto.getRestaurantSessionDto();
 
-            if (!sessionDtos.isEmpty()) {
-                for (RestaurantSessionDto sessionDto : sessionDtos) {
-                    List<BasicTimeDto> basicTimeDtos = sessionDto.getBasicTime();
-                    if (basicTimeDtos != null) {
-                        for (BasicTimeDto basicTimeDto : basicTimeDtos) {
-                            int count = basicTimeDto.getWeekday().size();
-                            int len = basicTimeDto.getWeekday().size();
+    Optional<MhLocation> existingLocation = locationDao.findById(basicDetailsDto.getLocationId());
 
-                            while (count > 0) {
-                                mhAvailability availability = new mhAvailability();
-                                availability.setName(sessionDto.getName());
+    if (existingLocation.isPresent()) {
+        MhLocation location = existingLocation.get();
+        if (!sessionDtos.isEmpty()) {
+            Set<String> updatedAvailabilityIds = new HashSet<>();
+            for (RestaurantSessionDto sessionDto : sessionDtos) {
+                List<BasicTimeDto> basicTimeDtos = sessionDto.getBasicTime();
+                if (basicTimeDtos != null) {
+                    for (BasicTimeDto basicTimeDto : basicTimeDtos) {
+                        for (String weekday : basicTimeDto.getWeekday()) {
+                            List<mhAvailability> availabilities = availabilityDao.findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(
+                                    location.getId(), sessionDto.getName(), numberingDays(weekday), basicTimeDto.getStart_time(), basicTimeDto.getEnd_time()
+                            );
+
+                            mhAvailability availability;
+                            if (!availabilities.isEmpty()) {
+                                availability = availabilities.get(0); // Use the first matching record
+                            } else {
+                                availability = new mhAvailability();
                                 availability.setId(UUID.randomUUID().toString());
-                                availability.setLocationId(location.getId());
-                                availability.setStartTime(basicTimeDto.getStart_time());
-                                availability.setEndTime(basicTimeDto.getEnd_time());
-                                availability.setWeekday(numberingDays(basicTimeDto.getWeekday().get(len - count)));
-                                availabilityDao.save(availability);
-                                count--;
                             }
+
+                            availability.setName(sessionDto.getName());
+                            availability.setLocationId(location.getId());
+                            availability.setStartTime(basicTimeDto.getStart_time());
+                            availability.setEndTime(basicTimeDto.getEnd_time());
+                            availability.setWeekday(numberingDays(weekday));
+                            availabilityDao.save(availability);
+
+                            updatedAvailabilityIds.add(availability.getId());
                         }
                     }
-
-
-                    ObjectNode attributesNode = objectMapper.createObjectNode();
-
-                    if (basicDetailsDto.getCuisines() != null  &&  !basicDetailsDto.getCuisines().isEmpty()) {
-                        ArrayNode cuisinesArray = objectMapper.valueToTree(basicDetailsDto.getCuisines());
-                        attributesNode.set("cuisines", cuisinesArray);
-                    }else   attributesNode.remove("cuisines");
-                    if (basicDetailsDto.getAmenities() != null && !basicDetailsDto.getAmenities().isEmpty()) {
-                        ArrayNode amenitiesArray = objectMapper.valueToTree(basicDetailsDto.getAmenities());
-                        attributesNode.set("amenities", amenitiesArray);
-                    }else   attributesNode.remove("amenities");
-                    if (basicDetailsDto.getParking() != null && !basicDetailsDto.getParking().isEmpty()) {
-                        ArrayNode parkingArray = objectMapper.valueToTree(basicDetailsDto.getParking());
-                        attributesNode.set("parking", parkingArray);
-                    }else{
-                        attributesNode.remove("parking");
-                    }
-                    if (basicDetailsDto.getSafetyMeasures() != null) {
-                        attributesNode.put("SafetyMeasures",basicDetailsDto.getSafetyMeasures());
-                    }
-
-                    String existingAttributes = location.getAttributes();
-                    JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
-                    JsonNode mergeData = objectMapper.readerForUpdating(oldAttributes).readValue(attributesNode.toString());
-
-                    location.setAttributes(objectMapper.writeValueAsString(mergeData));
-                    locationDao.save(location);
                 }
-
-            }
-        }else {
-                throw new LocationNotFoundException();
             }
 
-            return ResponseEntity.status(HttpStatus.OK).body("Success");
+            List<mhAvailability> existingAvailabilities = availabilityDao.findByLocationId(location.getId());
+            for (mhAvailability availability : existingAvailabilities) {
+                if (!updatedAvailabilityIds.contains(availability.getId())) {
+                    availabilityDao.delete(availability);
+                }
+            }
         }
 
+        ObjectNode attributesNode = objectMapper.createObjectNode();
+
+        replaceOrRemoveArray(attributesNode, "cuisines", basicDetailsDto.getCuisines(), objectMapper);
+        replaceOrRemoveArray(attributesNode, "amenities", basicDetailsDto.getAmenities(), objectMapper);
+        replaceOrRemoveArray(attributesNode, "parking", basicDetailsDto.getParking(), objectMapper);
+
+        if (basicDetailsDto.getSafetyMeasures() != null) {
+            attributesNode.put("SafetyMeasures", basicDetailsDto.getSafetyMeasures());
+        } else {
+            attributesNode.remove("SafetyMeasures");
+        }
+
+        String existingAttributes = location.getAttributes();
+        JsonNode oldAttributes = existingAttributes != null ? objectMapper.readTree(existingAttributes) : objectMapper.createObjectNode();
+        JsonNode updatedAttributes = mergeAttributes(oldAttributes, attributesNode);
+
+        location.setAttributes(objectMapper.writeValueAsString(updatedAttributes));
+        locationDao.save(location);
+
+    } else {
+        throw new LocationNotFoundException();
+    }
+
+    return ResponseEntity.status(HttpStatus.OK).body("Success");
+}
+
+    private void replaceOrRemoveArray(ObjectNode attributesNode, String key, List<String> values, ObjectMapper objectMapper) {
+        if (values != null && !values.isEmpty()) {
+            ArrayNode arrayNode = objectMapper.valueToTree(values);
+            attributesNode.set(key, arrayNode);
+        } else {
+            attributesNode.remove(key);
+        }
+    }
+
+    private JsonNode mergeAttributes(JsonNode oldAttributes, ObjectNode newAttributes) {
+        Iterator<Map.Entry<String, JsonNode>> fields = newAttributes.fields();
+        while (fields.hasNext()) {
+            Map.Entry<String, JsonNode> entry = fields.next();
+            ((ObjectNode) oldAttributes).replace(entry.getKey(), entry.getValue());
+        }
+        return oldAttributes;
+    }
 
     private String numberingDays(String weekday) {
         Map<String, String> dayMap = new HashMap<>();
@@ -247,13 +308,10 @@ public class ManagementServiceImpl implements ManagementService {
         return dayMap.get(weekday);
     }
 
-
-
     @Override
     public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDTO) throws AWSImageUploadFailedException, ImageNotFoundException {
         if (restaurantImgDTO.getProfileImg() != null) {
             imageService.storeImage(restaurantImgDTO.getLocationId(),restaurantImgDTO.getProfileImg(),"Profile_Image");
-
         }
         if (restaurantImgDTO.getRestaurantImgs() != null) {
             for (String restImg : restaurantImgDTO.getRestaurantImgs()) {
@@ -262,8 +320,6 @@ public class ManagementServiceImpl implements ManagementService {
         }
         return ResponseEntity.status(HttpStatus.OK).body("Success");
     }
-
-
 
     @Override
     public ResponseEntity<String> saveDineIn(DineInDto dineInDto) throws LocationNotFoundException, JsonProcessingException {
@@ -294,7 +350,6 @@ public class ManagementServiceImpl implements ManagementService {
 
             MhLocation location = existingLocation.get();
             ObjectNode pickupDtoJsonNode = objectMapper.valueToTree(pickupDto);
-            // Remove the locationId field
             pickupDtoJsonNode.remove("locationId");
             ObjectNode attributesMapNode = objectMapper.createObjectNode();
             attributesMapNode.set("PickUpDetails", pickupDtoJsonNode);
@@ -341,7 +396,6 @@ public class ManagementServiceImpl implements ManagementService {
                 MhLocation location = existingLocation.get();
                 ObjectNode deliveryDtoJsonNode = objectMapper.valueToTree(deliveryDto);
 
-                // Remove the locationId field
                 deliveryDtoJsonNode.remove("locationId");
 
                 if (deliveryDto.getDeliverySettingTime() != null) {
@@ -392,7 +446,6 @@ public class ManagementServiceImpl implements ManagementService {
 
         // Save merged attributes back to the location
         location.setAttributes(objectMapper.writeValueAsString(oldAttributes));
-
         locationDao.save(location);
     }
 

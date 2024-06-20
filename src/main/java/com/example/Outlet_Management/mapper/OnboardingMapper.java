@@ -17,4 +17,6 @@ public interface OnboardingMapper {
     @Mapping(source = "location_Details.pinCode", target = "pinCode")
     @Mapping(source = "location_Details.country", target = "country")
     void updateMhLocationFromOnboardingDto(OnboardingDto onboardingDto, @MappingTarget MhLocation location);
+
+    MhLocation toMhLocation(OnboardingDto onboardingDto);
 }
