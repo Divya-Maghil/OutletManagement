@@ -15,8 +15,11 @@ public class RestaurantDto {
     private String website;
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private String instagramLink;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String facebookLink;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String restaurantNumber;
+    @JsonInclude(JsonInclude.Include.NON_NULL)
     private String whatsappNumber;
 
 
