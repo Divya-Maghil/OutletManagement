@@ -6,6 +6,7 @@ import com.example.Outlet_Management.repo.AvailabilityRepo;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Repository;
 
+import java.sql.Time;
 import java.util.List;
 
 @Repository
@@ -23,8 +24,8 @@ public class AvailabilityDaoImpl implements AvailabilityDao {
     }
 
     @Override
-    public List<mhAvailability> findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(String id, String name, String s, String startTime, String endTime) {
-        return availabilityRepo.findByLocationIdAndNameAndWeekDayAndStartTimeAndEndTime(id, name, s, startTime, endTime);
+    public List<mhAvailability> findByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(String id, String name, String s, Time startTime, Time endTime) {
+        return availabilityRepo.getByLocationIdAndNameAndWeekdayAndStartTimeAndEndTime(id, name, s, startTime, endTime);
     }
 
 

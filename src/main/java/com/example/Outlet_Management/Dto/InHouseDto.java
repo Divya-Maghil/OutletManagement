@@ -12,5 +12,6 @@ public class InHouseDto {
     private String feesStructure;
     private String initial2MileAmount;
     private String additional1MileAmount;
-    private String flatFee;
+    private String maximumRadius;
+
 }

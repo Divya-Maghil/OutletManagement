@@ -8,7 +8,7 @@ import org.hibernate.sql.ast.SqlTreeCreationException;
 @AllArgsConstructor(staticName = "build")
 public class RegistrationDTO {
     private String locationId;
-    private String restaurantName; //Business_legal_name
+    private String restaurantName;
     private String designation;
     private String name;
     private String phone;           //phone

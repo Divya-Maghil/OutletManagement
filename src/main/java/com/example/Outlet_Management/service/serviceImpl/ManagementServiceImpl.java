@@ -3,6 +3,7 @@ package com.example.Outlet_Management.service.serviceImpl;
 
 import com.example.Outlet_Management.Dao.AvailabilityDao;
 import com.example.Outlet_Management.Dao.LocationDao;
+import com.example.Outlet_Management.Dao.MediaDao;
 import com.example.Outlet_Management.Dto.*;
 import com.example.Outlet_Management.entity.mhAvailability;
 import com.example.Outlet_Management.entity.MhLocation;
@@ -26,6 +27,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+
+import java.sql.Time;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -39,6 +42,7 @@ public class ManagementServiceImpl implements ManagementService {
 
 
     private LocationDao locationDao;
+    private MediaDao mediaDao;
     private AvailabilityDao availabilityDao;
     private ImageService imageService;
     private RegistrationMapper registrationMapper;
@@ -91,51 +95,36 @@ public class ManagementServiceImpl implements ManagementService {
         Optional<List<MhLocation>> locationsOptional = locationDao.findByMerchantId(merchantId);
         List<MhLocation> locations = locationsOptional.get();
         return locations.stream()
-                .map(location -> new GetLocationDto(location.getId(), location.getRestaurantName()))
+                .map(location -> new GetLocationDto(location.getId(), location.getName()))
                 .collect(Collectors.toList());
     }
 
 
     @Override
     public List<GetDto> getData(String locationId) throws LocationNotFoundException {
-        // Retrieve MhLocation entities
-        List<MhLocation> locations = entityManager.createQuery(
-                        "SELECT l FROM MhLocation l WHERE l.Id = :locationId", MhLocation.class)
-                .setParameter("locationId", locationId)
-                .getResultList();
 
-        if (locations.isEmpty()) {
+        Optional<MhLocation> locationOpt=locationDao.findById(locationId);
+        if (locationOpt.isEmpty()) {
             throw new LocationNotFoundException("Invalid location");
         }
-        List<String> locationIds = locations.stream().map(MhLocation::getId).toList();
-        // Retrieve MhMedia entities for all locations
-        List<MhMedia> mediaList = entityManager.createQuery(
-                        "SELECT m FROM MhMedia m WHERE m.entityId IN :locationIds", MhMedia.class)
-                .setParameter("locationIds", locationIds)
-                .getResultList();
+        MhLocation location = locationOpt.get();
+        List<MhMedia> mediaList = mediaDao.findByEntityId(locationId);
+        List<mhAvailability> availabilityList = availabilityDao.findByLocationId(locationId);
 
-        // Retrieve mhAvailability entities for all locations
-        List<mhAvailability> availabilityList = entityManager.createQuery(
-                        "SELECT a FROM mhAvailability a WHERE a.locationId IN :locationIds", mhAvailability.class)
-                .setParameter("locationIds", locationIds)
-                .getResultList();
+        List<MediaDto> locationMedia = mediaList.stream()
+                .map(locationMapper::toMediaDto)
+                .collect(Collectors.toList());
 
+        List<AvailabilityDto> locationAvailability = availabilityList.stream()
+                .map(locationMapper::toAvailabilityDto)
+                .collect(Collectors.toList());
 
-        return locations.stream()
-                .map(location -> {
-                    List<MediaDto> locationMedia = mediaList.stream()
-                            .filter(media -> media.getEntityId().equals(location.getId()))
-                            .map(locationMapper :: toMediaDto)
-                            .collect(Collectors.toList());
+        GetDto dto = locationMapper.toDto(location, locationMedia, locationAvailability);
 
-                    List<AvailabilityDto> locationAvailability = availabilityList.stream()
-                            .filter(availability -> availability.getLocationId().equals(location.getId()))
-                            .map(locationMapper::toAvailabilityDto)
-                            .collect(Collectors.toList());
-                    return locationMapper.toDto(location, locationMedia, locationAvailability);
-                }).toList();
-
+        return Collections.singletonList(dto);
     }
+
+
 
     private void putNonNull(ObjectNode node, String fieldName, String value) {
         if (value != null) {
@@ -174,7 +163,7 @@ public class ManagementServiceImpl implements ManagementService {
             attributesNode.set("BankDetails", bankNode);
         }
 
-        putNonNull(attributesNode,"RestaurantName",onboardingDto.getRestaurant_details().getRestaurantNumber());
+        putNonNull(attributesNode,"BusinessLegalName",onboardingDto.getRestaurant_details().getBusinessLegalName());
         putNonNull(attributesNode,"websiteLink", onboardingDto.getRestaurant_details().getWebsite());
         putNonNull(attributesNode,"instagramLink", onboardingDto.getRestaurant_details().getInstagramLink());
         putNonNull(attributesNode,"FaceBookLink", onboardingDto.getRestaurant_details().getFacebookLink());
@@ -223,7 +212,7 @@ public ResponseEntity<String> saveBasic(BasicDetailsDto basicDetailsDto) throws 
                             availability.setLocationId(location.getId());
                             availability.setStartTime(basicTimeDto.getStart_time());
                             availability.setEndTime(basicTimeDto.getEnd_time());
-                            availability.setWeekDay(numberingDays(weekday));
+                            availability.setWeekday(numberingDays(weekday));
                             availabilityDao.save(availability);
 
                             updatedAvailabilityIds.add(availability.getId());
@@ -420,6 +409,8 @@ public ResponseEntity<String> saveRestaurantImg(RestaurantImgDto restaurantImgDT
                     else {
                         deliveryDtoJsonNode.put("isThirdPartyEnabled", false);
                     }
+
+
 
                     deliveryDtoJsonNode.remove("deliveryOption");
 

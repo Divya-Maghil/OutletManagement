@@ -8,7 +8,7 @@ import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface OnboardingMapper {
-    @Mapping(source = "restaurant_details.businessLegalName", target = "restaurantName")
+//    @Mapping(source = "restaurant_details.businessLegalName", target = "restaurantName")
     @Mapping(source = "restaurant_details.phone", target = "phone")
     @Mapping(source = "restaurant_details.email", target = "email")
     @Mapping(source = "location_Details.address", target = "addressLine1")

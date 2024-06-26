@@ -2,6 +2,9 @@ package com.example.Outlet_Management.Dao;
 
 import com.example.Outlet_Management.Dto.GetLocationDto;
 import com.example.Outlet_Management.entity.MhLocation;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +16,6 @@ public interface LocationDao {
     Optional<MhLocation> findById(String id);
 
    // List<GetLocationDto> findLocationDetailsByMerchantId(String merchantId);
-
 
     //void save(MhLocation );
 }

@@ -23,8 +23,8 @@ public class MhLocation {
     private String id;//location id uuid
     @Column(length=36)
     private String merchantId;
-    @Column(length = 36)
-    private String restaurantName;
+//    @Column(length = 36)
+//    private String restaurantName;
     @Column(length = 36)
     private String name;
     @Column(length=20)
